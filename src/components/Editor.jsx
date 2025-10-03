@@ -1,9 +1,17 @@
 import PropTypes from 'prop-types';
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { useMemo } from 'react';
 
-const numberFormatter = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 });
+function createFormatter(locale) {
+  try {
+    return new Intl.NumberFormat(locale ?? 'ru-RU', { maximumFractionDigits: 1 });
+  } catch (error) {
+    return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 });
+  }
+}
 
-function StageCard({ stage, zones, onStageChange, onStageRemove, onNoteChange, onFocusStage }) {
+function StageCard({ stage, zones, onStageChange, onStageRemove, onNoteChange, onFocusStage, locale }) {
+  const numberFormatter = useMemo(() => createFormatter(locale), [locale]);
   const zoneOptions = zones ?? [];
   const isPercentMode = stage.mode !== 'absolute';
 
@@ -145,7 +153,7 @@ StageCard.propTypes = {
   onFocusStage: PropTypes.func.isRequired,
 };
 
-function Editor({ title, stages, zones, onStageChange, onStageAdd, onStageRemove, onNoteChange, onFocusStage }) {
+function Editor({ title, stages, zones, onStageChange, onStageAdd, onStageRemove, onNoteChange, onFocusStage, locale }) {
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
@@ -167,6 +175,7 @@ function Editor({ title, stages, zones, onStageChange, onStageAdd, onStageRemove
             onStageRemove={onStageRemove}
             onNoteChange={onNoteChange}
             onFocusStage={onFocusStage}
+            locale={locale}
           />
         ))}
       </div>
@@ -183,6 +192,7 @@ Editor.propTypes = {
   onStageRemove: PropTypes.func.isRequired,
   onNoteChange: PropTypes.func.isRequired,
   onFocusStage: PropTypes.func.isRequired,
+  locale: PropTypes.string,
 };
 
 export default Editor;
