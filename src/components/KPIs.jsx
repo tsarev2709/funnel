@@ -1,7 +1,15 @@
 import PropTypes from 'prop-types';
+import { useMemo } from 'react';
 
-const formatNumber = (value, fraction = 1) =>
-  new Intl.NumberFormat('ru-RU', { maximumFractionDigits: fraction }).format(value ?? 0);
+function createFormatter(locale) {
+  return (value, fraction = 1) => {
+    try {
+      return new Intl.NumberFormat(locale ?? 'ru-RU', { maximumFractionDigits: fraction }).format(value ?? 0);
+    } catch (error) {
+      return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: fraction }).format(value ?? 0);
+    }
+  };
+}
 
 function KPIBlock({ label, base, improved, accent }) {
   const delta = (improved ?? 0) - (base ?? 0);
@@ -9,10 +17,10 @@ function KPIBlock({ label, base, improved, accent }) {
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
       <div className="text-xs uppercase tracking-wide text-slate-400">{label}</div>
-      <div className="mt-2 text-2xl font-semibold text-slate-100">{formatNumber(improved ?? base)}</div>
-      <div className="mt-1 text-sm text-slate-400">База: {formatNumber(base)}</div>
+      <div className="mt-2 text-2xl font-semibold text-slate-100">{KPIBlock.formatNumber(improved ?? base)}</div>
+      <div className="mt-1 text-sm text-slate-400">База: {KPIBlock.formatNumber(base)}</div>
       <div className={`mt-1 text-xs font-semibold ${accent}`}>
-        Δ {formatNumber(delta)} ({formatNumber(deltaPercent)}%)
+        Δ {KPIBlock.formatNumber(delta)} ({KPIBlock.formatNumber(deltaPercent)}%)
       </div>
     </div>
   );
@@ -25,7 +33,17 @@ KPIBlock.propTypes = {
   accent: PropTypes.string,
 };
 
-function KPIs({ title, metrics, finances, onFinancesChange }) {
+KPIBlock.formatNumber = (value, fraction = 1) => {
+  try {
+    return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: fraction }).format(value ?? 0);
+  } catch (error) {
+    return String(value ?? 0);
+  }
+};
+
+function KPIs({ title, metrics, finances, onFinancesChange, locale }) {
+  const formatNumber = useMemo(() => createFormatter(locale), [locale]);
+  KPIBlock.formatNumber = formatNumber;
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -44,6 +62,17 @@ function KPIs({ title, metrics, finances, onFinancesChange }) {
         <KPIBlock label="Рост в штуках" base={0} improved={metrics.deltaUnits} accent="text-emerald-300" />
         <KPIBlock label="Рост %" base={0} improved={metrics.deltaPercent} accent="text-cyan-300" />
         <KPIBlock label="Потери по пути" base={metrics.topValue - metrics.finalBase} improved={metrics.topValue - metrics.finalImproved} accent="text-rose-300" />
+        {metrics.churnRate !== null && metrics.churnRateImproved !== null && (
+          <KPIBlock label="Churn rate" base={metrics.churnRate} improved={metrics.churnRateImproved} accent="text-rose-300" />
+        )}
+        {metrics.retentionSummary && (
+          <KPIBlock
+            label="Лояльные клиенты %"
+            base={metrics.retentionSummary.loyalShare}
+            improved={metrics.retentionSummary.loyalShareImproved}
+            accent="text-emerald-300"
+          />
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -116,6 +145,9 @@ function KPIs({ title, metrics, finances, onFinancesChange }) {
             <li>LTV: {formatNumber(finances.ltv)} ₽ (LTV/CAC = {finances.cac ? formatNumber(finances.ltv / finances.cac) : '∞'})</li>
             <li>Payback (m): {formatNumber(metrics.paybackMonths)}</li>
             <li>Δ ROI: {formatNumber(metrics.roiImproved - metrics.roiBase)} п.п.</li>
+            {metrics.churnRate !== null && (
+              <li>Churn rate: {formatNumber(metrics.churnRate)}% → {formatNumber(metrics.churnRateImproved)}%</li>
+            )}
           </ul>
         </div>
       </div>
@@ -128,6 +160,13 @@ KPIs.propTypes = {
   metrics: PropTypes.object.isRequired,
   finances: PropTypes.object.isRequired,
   onFinancesChange: PropTypes.func.isRequired,
+  locale: PropTypes.string,
 };
+
+KPIs.defaultProps = {
+  locale: 'ru-RU',
+};
+
+KPIs.createFormatter = createFormatter;
 
 export default KPIs;

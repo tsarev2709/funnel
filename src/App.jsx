@@ -17,34 +17,99 @@ const translations = {
     scenario: 'Сценарии',
     exportJson: 'Экспорт JSON',
     importJson: 'Импорт JSON/CSV',
-    toggleLang: 'EN',
+    languageLabel: 'Язык',
+    languageName: 'Русский',
     kpi: 'KPI и финансы',
     editor: 'Этапы воронки',
     levers: 'Левериджи',
+    leversSubtitle: 'плюсики роста',
+    leverStageLabel: 'Этап',
+    leverActiveLabel: 'Включено',
+    leverActivateLabel: 'Активировать',
+    leverImprovedLabel: 'Улучшенный выход',
+    leverEmptyLabel: 'Для пресета пока нет левериджей.',
     zones: 'Зоны',
     insights: 'Инсайты',
     notes: 'Задачи и заметки',
     presentation: 'Режим презентации',
     stop: 'Стоп',
+    newStage: 'Новый этап',
   },
   en: {
     preset: 'Preset',
     scenario: 'Scenarios',
     exportJson: 'Export JSON',
     importJson: 'Import JSON/CSV',
-    toggleLang: 'RU',
+    languageLabel: 'Language',
+    languageName: 'English',
     kpi: 'KPIs & Finance',
     editor: 'Funnel stages',
-    levers: 'Levers',
+    levers: 'Growth levers',
+    leversSubtitle: 'growth boosts',
+    leverStageLabel: 'Stage',
+    leverActiveLabel: 'Enabled',
+    leverActivateLabel: 'Activate',
+    leverImprovedLabel: 'Improved output',
+    leverEmptyLabel: 'No levers for this preset yet.',
     zones: 'Zones',
     insights: 'Insights',
     notes: 'Tasks & notes',
     presentation: 'Presentation mode',
     stop: 'Stop',
+    newStage: 'New stage',
+  },
+  de: {
+    preset: 'Preset',
+    scenario: 'Szenarien',
+    exportJson: 'JSON exportieren',
+    importJson: 'JSON/CSV importieren',
+    languageLabel: 'Sprache',
+    languageName: 'Deutsch',
+    kpi: 'KPIs & Finanzen',
+    editor: 'Funnel-Stufen',
+    levers: 'Hebel',
+    leversSubtitle: 'Wachstums-Boosts',
+    leverStageLabel: 'Stufe',
+    leverActiveLabel: 'Aktiv',
+    leverActivateLabel: 'Aktivieren',
+    leverImprovedLabel: 'Verbesserter Output',
+    leverEmptyLabel: 'Für dieses Preset sind keine Hebel hinterlegt.',
+    zones: 'Zonen',
+    insights: 'Insights',
+    notes: 'Aufgaben & Notizen',
+    presentation: 'Präsentationsmodus',
+    stop: 'Stop',
+    newStage: 'Neue Stufe',
+  },
+  zh: {
+    preset: '预设',
+    scenario: '情景',
+    exportJson: '导出 JSON',
+    importJson: '导入 JSON/CSV',
+    languageLabel: '语言',
+    languageName: '中文',
+    kpi: '关键指标与财务',
+    editor: '漏斗阶段',
+    levers: '增长杠杆',
+    leversSubtitle: '增长加成',
+    leverStageLabel: '阶段',
+    leverActiveLabel: '已启用',
+    leverActivateLabel: '启用',
+    leverImprovedLabel: '改进后输出',
+    leverEmptyLabel: '此预设暂无杠杆。',
+    zones: '区域',
+    insights: '洞察',
+    notes: '任务与笔记',
+    presentation: '演示模式',
+    stop: '停止',
+    newStage: '新阶段',
   },
 };
 
-const numberFormatter = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 });
+const languageOptions = Object.entries(translations).map(([code, value]) => ({
+  code,
+  label: value.languageName,
+}));
 
 function deepClone(value) {
   if (typeof structuredClone === 'function') {
@@ -65,6 +130,12 @@ function loadPreset(preset) {
     levers: clone.levers || [],
     finances: clone.finances || { avgCheck: 0, cpl: 0, cac: 0, ltv: 0 },
     scenarios: clone.scenarios || [{ id: 'base', name: 'Base', adjustments: {} }],
+    trafficChannels: (clone.trafficChannels || []).map((channel, index) => ({
+      id: channel.id ?? `traffic-${index}`,
+      name: channel.name,
+      share: channel.share,
+      note: channel.note ?? '',
+    })),
   };
 }
 
@@ -114,6 +185,16 @@ function App() {
   const currentScenario = useMemo(() => {
     return state.scenarios?.find((scenario) => scenario.id === scenarioId) ?? fallbackScenario;
   }, [scenarioId, state.scenarios]);
+
+  const localeMap = { ru: 'ru-RU', en: 'en-US', de: 'de-DE', zh: 'zh-CN' };
+  const locale = localeMap[language] ?? 'ru-RU';
+  const numberFormatter = useMemo(() => {
+    try {
+      return new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
+    } catch (error) {
+      return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 });
+    }
+  }, [locale]);
 
   const metrics = useMemo(() => {
     const scenarioAdjustments = currentScenario?.adjustments ?? {};
@@ -215,6 +296,47 @@ function App() {
       ? `Самая большая потеря (${numberFormatter.format(bottleneck.drop)}) на этапе «${bottleneck.name}». Улучшение конверсии на 5 п.п. даст дополнительно ~${numberFormatter.format((baseStages[bottleneck.index - 1]?.baseValue ?? 0) * 0.05)} лидов.`
       : 'Воронка стабильна, улучшайте верх и удержание одновременно.';
 
+    const retentionStages = baseStages.filter((stage) => stage.zoneId === 'retention');
+    let churnRate = null;
+    let churnRateImproved = null;
+    let retentionSummary = null;
+
+    if (retentionStages.length) {
+      const firstRetention = retentionStages[0];
+      const previousStage = firstRetention.index > 0 ? baseStages[firstRetention.index - 1] : null;
+      const baseCustomers = previousStage?.baseValue ?? firstRetention.baseValue ?? 0;
+      const lastRetention = retentionStages[retentionStages.length - 1];
+      const retainedBase = lastRetention?.baseValue ?? 0;
+      const retainedImproved = lastRetention?.improvedValue ?? retainedBase;
+
+      if (baseCustomers > 0) {
+        churnRate = Math.max(0, Math.min(100, ((baseCustomers - retainedBase) / baseCustomers) * 100));
+        churnRateImproved = Math.max(0, Math.min(100, ((baseCustomers - retainedImproved) / baseCustomers) * 100));
+      } else {
+        churnRate = 0;
+        churnRateImproved = 0;
+      }
+
+      const loyalShare = baseCustomers > 0 ? Math.max(0, Math.min(100, (retainedBase / baseCustomers) * 100)) : 0;
+      const loyalShareImproved = baseCustomers > 0 ? Math.max(0, Math.min(100, (retainedImproved / baseCustomers) * 100)) : loyalShare;
+      const atRiskShare = Math.max(0, Math.min(100, (churnRate ?? 0) * 0.55));
+      const atRiskShareImproved = Math.max(0, Math.min(100, (churnRateImproved ?? 0) * 0.45));
+      const sleepingShare = Math.max(0, Math.min(100, 100 - loyalShare - atRiskShare - (churnRate ?? 0)));
+      const sleepingShareImproved = Math.max(0, Math.min(100, 100 - loyalShareImproved - atRiskShareImproved - (churnRateImproved ?? 0)));
+
+      retentionSummary = {
+        baseCustomers,
+        loyalShare,
+        loyalShareImproved,
+        atRiskShare,
+        atRiskShareImproved,
+        sleepingShare,
+        sleepingShareImproved,
+        churnRate: churnRate ?? 0,
+        churnRateImproved: churnRateImproved ?? 0,
+      };
+    }
+
     return {
       stages: baseStages,
       topValue,
@@ -233,8 +355,11 @@ function App() {
       grossMarginImproved,
       bottleneck,
       insight,
+      churnRate,
+      churnRateImproved,
+      retentionSummary,
     };
-  }, [state.stages, state.levers, state.finances, currentScenario, activeLevers]);
+  }, [state.stages, state.levers, state.finances, currentScenario, activeLevers, numberFormatter]);
 
   const { stages: stageMetrics } = metrics;
 
@@ -250,7 +375,7 @@ function App() {
     const previous = state.stages[state.stages.length - 1];
     const newStage = {
       id,
-      name: 'Новый этап',
+      name: translations[language]?.newStage ?? 'New stage',
       mode: 'percent',
       value: previous ? Math.round(previous.value * 0.6) : 1000,
       conversion: 60,
@@ -416,11 +541,7 @@ function App() {
     setPresentationIndex(null);
   };
 
-  const toggleLanguage = () => {
-    setLanguage((prev) => (prev === 'ru' ? 'en' : 'ru'));
-  };
-
-  const t = translations[language];
+  const t = translations[language] ?? translations.ru;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -448,12 +569,20 @@ function App() {
                 ))}
               </select>
             </label>
-            <button
-              onClick={toggleLanguage}
-              className="flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm hover:border-slate-500"
-            >
-              <LanguageIcon className="h-4 w-4" /> {t.toggleLang}
-            </button>
+            <label className="flex items-center gap-2 text-sm text-slate-300">
+              <LanguageIcon className="h-4 w-4" /> {t.languageLabel}
+              <select
+                value={language}
+                onChange={(event) => setLanguage(event.target.value)}
+                className="rounded-md border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm"
+              >
+                {languageOptions.map((option) => (
+                  <option key={option.code} value={option.code}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button
               onClick={exportJson}
               className="flex items-center gap-2 rounded-md border border-indigo-500/40 bg-indigo-500/10 px-3 py-2 text-sm font-medium text-indigo-200 hover:bg-indigo-500/20"
@@ -506,8 +635,9 @@ function App() {
                 presentationIndex={presentationIndex}
                 focusedStageId={focusedStageId}
                 onStageFocus={setFocusedStageId}
+                locale={locale}
               />
-              <InsightsPanel metrics={metrics} zones={state.zones} />
+              <InsightsPanel metrics={metrics} zones={state.zones} locale={locale} trafficChannels={state.trafficChannels} />
             </div>
 
             <KPIs
@@ -515,6 +645,7 @@ function App() {
               metrics={metrics}
               finances={state.finances}
               onFinancesChange={handleFinancesChange}
+              locale={locale}
             />
 
             <Editor
@@ -538,16 +669,26 @@ function App() {
               onStageRemove={handleStageRemove}
               onNoteChange={handleNoteChange}
               onFocusStage={setFocusedStageId}
+              locale={locale}
             />
           </section>
 
           <aside className="space-y-6">
             <Levers
               title={t.levers}
+              subtitle={t.leversSubtitle}
               levers={state.levers}
               activeLevers={activeLevers}
               onToggle={handleLeverToggle}
               stages={stageMetrics}
+              locale={locale}
+              strings={{
+                stageLabel: t.leverStageLabel,
+                active: t.leverActiveLabel,
+                activate: t.leverActivateLabel,
+                improvedOutput: t.leverImprovedLabel,
+                empty: t.leverEmptyLabel,
+              }}
             />
             <ZonesEditor
               title={t.zones}

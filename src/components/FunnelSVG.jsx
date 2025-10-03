@@ -5,7 +5,13 @@ const StageHeight = 140;
 const StageGap = 18;
 const ViewWidth = 1080;
 
-const numberFormatter = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 });
+function createFormatter(locale) {
+  try {
+    return new Intl.NumberFormat(locale ?? 'ru-RU', { maximumFractionDigits: 1 });
+  } catch (error) {
+    return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 });
+  }
+}
 
 function widthForValue(value, topValue) {
   if (!topValue || topValue <= 0) return 220;
@@ -15,7 +21,8 @@ function widthForValue(value, topValue) {
   return minWidth + (maxWidth - minWidth) * ratio;
 }
 
-function FunnelSVG({ stages, zones, presentationIndex, focusedStageId, onStageFocus }) {
+function FunnelSVG({ stages, zones, presentationIndex, focusedStageId, onStageFocus, locale }) {
+  const numberFormatter = useMemo(() => createFormatter(locale), [locale]);
   const topValue = stages?.[0]?.baseValue ?? 0;
 
   const zoneLayers = useMemo(() => {
@@ -39,8 +46,8 @@ function FunnelSVG({ stages, zones, presentationIndex, focusedStageId, onStageFo
     const currentWidth = widthForValue(stage.baseValue, topValue);
     const improvedWidth = widthForValue(stage.improvedValue, topValue);
     const y = index * (StageHeight + StageGap) + StageHeight / 2;
-    const xBase = (ViewWidth - currentWidth) / 2 + currentWidth / 2;
-    const xImproved = (ViewWidth - improvedWidth) / 2 + improvedWidth / 2;
+    const xBase = (ViewWidth - currentWidth) / 2;
+    const xImproved = (ViewWidth + improvedWidth) / 2;
     basePolyline.push(`${xBase},${y}`);
     improvedPolyline.push(`${xImproved},${y}`);
   });
@@ -57,17 +64,29 @@ function FunnelSVG({ stages, zones, presentationIndex, focusedStageId, onStageFo
           </defs>
 
           {zoneLayers.map((zone) => (
-            <rect
-              key={zone.id}
-              x={60}
-              y={zone.y}
-              width={ViewWidth - 120}
-              height={zone.height}
-              rx={26}
-              fill={`${zone.color}0d`}
-              stroke={`${zone.color}40`}
-              strokeWidth={2}
-            />
+            <g key={zone.id}>
+              <rect
+                x={60}
+                y={zone.y}
+                width={ViewWidth - 120}
+                height={zone.height}
+                rx={26}
+                fill={`${zone.color}0d`}
+                stroke={`${zone.color}40`}
+                strokeWidth={2}
+              />
+              <text
+                x={80}
+                y={zone.y + zone.height / 2}
+                textAnchor="start"
+                fill={zone.color}
+                fontSize={14}
+                fontWeight={600}
+                className="uppercase tracking-wide"
+              >
+                {zone.name}
+              </text>
+            </g>
           ))}
 
           {stages.map((stage, index) => {
@@ -137,15 +156,19 @@ function FunnelSVG({ stages, zones, presentationIndex, focusedStageId, onStageFo
             points={basePolyline.join(' ')}
             fill="none"
             stroke="#3b82f6"
-            strokeWidth={4}
+            strokeWidth={3.5}
             strokeLinejoin="round"
+            strokeLinecap="round"
+            strokeOpacity={0.45}
           />
           <polyline
             points={improvedPolyline.join(' ')}
             fill="none"
             stroke="#22c55e"
-            strokeWidth={4}
+            strokeWidth={3.5}
             strokeLinejoin="round"
+            strokeLinecap="round"
+            strokeOpacity={0.45}
           />
         </svg>
       </div>
@@ -171,6 +194,7 @@ FunnelSVG.propTypes = {
   presentationIndex: PropTypes.number,
   focusedStageId: PropTypes.string,
   onStageFocus: PropTypes.func,
+  locale: PropTypes.string,
 };
 
 export default FunnelSVG;
