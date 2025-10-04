@@ -15,7 +15,7 @@ function KPIBlock({ label, base, improved, accent }) {
   const delta = (improved ?? 0) - (base ?? 0);
   const deltaPercent = base ? (delta / base) * 100 : 0;
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 card-animated">
       <div className="text-xs uppercase tracking-wide text-slate-400">{label}</div>
       <div className="mt-2 text-2xl font-semibold text-slate-100">{KPIBlock.formatNumber(improved ?? base)}</div>
       <div className="mt-1 text-sm text-slate-400">База: {KPIBlock.formatNumber(base)}</div>
@@ -49,7 +49,10 @@ function KPIs({ title, metrics, finances, onFinancesChange, locale }) {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-lg font-semibold text-slate-100">{title}</h2>
         <div className="flex flex-wrap gap-2 text-xs text-slate-400">
-          <button onClick={() => window.print()} className="rounded-md border border-slate-700 px-3 py-1 hover:border-cyan-400">
+          <button
+            onClick={() => window.print()}
+            className="transform rounded-md border border-slate-700 px-3 py-1 transition hover:-translate-y-0.5 hover:border-cyan-400 active:scale-95"
+          >
             Экспорт PDF/PNG
           </button>
           <div className="rounded-md border border-slate-800 bg-slate-900/80 px-3 py-1">
@@ -76,7 +79,7 @@ function KPIs({ title, metrics, finances, onFinancesChange, locale }) {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 card-animated">
           <h3 className="text-sm font-semibold text-slate-200">Финансовые параметры</h3>
           <div className="mt-3 space-y-3 text-sm">
             <label className="flex items-center justify-between gap-3">
@@ -117,7 +120,7 @@ function KPIs({ title, metrics, finances, onFinancesChange, locale }) {
             </label>
           </div>
         </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 card-animated">
           <h3 className="text-sm font-semibold text-slate-200">Денежный поток</h3>
           <dl className="mt-3 space-y-2 text-sm text-slate-300">
             <div className="flex items-center justify-between">
@@ -133,12 +136,24 @@ function KPIs({ title, metrics, finances, onFinancesChange, locale }) {
               <dd>{formatNumber(metrics.spendBase, 0)} ₽ → {formatNumber(metrics.spendImproved, 0)} ₽</dd>
             </div>
             <div className="flex items-center justify-between">
+              <dt>Доля выручки</dt>
+              <dd>
+                {metrics.marketingBudgetShare != null
+                  ? `${formatNumber((metrics.marketingBudgetShare ?? 0) * 100)}%`
+                  : '—'}{' '}
+                <span className="text-xs text-cyan-200">{metrics.marketingBudgetLabel}</span>
+              </dd>
+            </div>
+            <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-200">
+              {metrics.marketingBudgetStatus}
+            </div>
+            <div className="flex items-center justify-between">
               <dt>Маржинальный доход</dt>
               <dd>{formatNumber(metrics.grossMarginBase, 0)} ₽ → {formatNumber(metrics.grossMarginImproved, 0)} ₽</dd>
             </div>
           </dl>
         </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 card-animated">
           <h3 className="text-sm font-semibold text-slate-200">Unit-экономика</h3>
           <ul className="mt-3 space-y-2 text-sm text-slate-300">
             <li>CAC: {formatNumber(finances.cac)} ₽</li>

@@ -6,6 +6,7 @@ import KPIs from './components/KPIs.jsx';
 import Levers from './components/Levers.jsx';
 import ZonesEditor from './components/ZonesEditor.jsx';
 import ScenarioTabs from './components/ScenarioTabs.jsx';
+import ScenarioSummary from './components/ScenarioSummary.jsx';
 import InsightsPanel from './components/InsightsPanel.jsx';
 import NotesTasks from './components/NotesTasks.jsx';
 import Stakeholders from './components/Stakeholders.jsx';
@@ -159,6 +160,193 @@ function loadPreset(preset) {
 
 const fallbackScenario = { id: 'base', name: 'Base', adjustments: {} };
 
+function normalizeShares(channels) {
+  if (!channels?.length) return [];
+  const total = channels.reduce((sum, channel) => sum + Math.max(0, Number(channel.share ?? 0)), 0);
+  let remainder = 100;
+  return channels.map((channel, index) => {
+    const baseShare = total > 0 ? (Math.max(0, Number(channel.share ?? 0)) / total) * 100 : 100 / channels.length;
+    const value = index === channels.length - 1 ? Math.max(0, remainder) : Math.min(remainder, Math.round(baseShare));
+    remainder -= value;
+    return {
+      ...channel,
+      id: channel.id ?? `traffic-${index}`,
+      share: Number.isFinite(value) ? value : 0,
+    };
+  });
+}
+
+function emphasizeByRank(channels, { top = 2, boost = 1.2, tail = 0.9 } = {}) {
+  if (!channels?.length) return [];
+  const normalized = normalizeShares(channels);
+  const indices = normalized
+    .map((channel, index) => ({ index, share: channel.share ?? 0 }))
+    .sort((a, b) => b.share - a.share)
+    .map((item) => item.index);
+  const weights = normalized.map(() => tail);
+  indices.forEach((index, position) => {
+    weights[index] = position < top ? boost : tail;
+  });
+  const weighted = normalized.map((channel, index) => ({
+    ...channel,
+    share: (channel.share ?? 0) * (weights[index] ?? 1),
+  }));
+  return normalizeShares(weighted);
+}
+
+function emphasizeKeywords(channels, { positivePattern, positiveWeight = 1.25, fallbackWeight = 0.9 } = {}) {
+  if (!channels?.length) return [];
+  const normalized = normalizeShares(channels);
+  const weighted = normalized.map((channel, index) => {
+    const identifier = `${channel.id ?? ''} ${channel.name ?? ''}`.toLowerCase();
+    const isPositive = positivePattern?.test(identifier) ?? false;
+    return {
+      ...channel,
+      share: (channel.share ?? 0) * (isPositive ? positiveWeight : fallbackWeight),
+      id: channel.id ?? `traffic-${index}`,
+    };
+  });
+  return normalizeShares(weighted);
+}
+
+function getBudgetClassification(share) {
+  if (share == null || Number.isNaN(share)) {
+    return { label: '—', status: 'Нет данных по бюджету.' };
+  }
+  if (share < 0.05) {
+    return { label: 'Критический минимум', status: 'Инвестиции <5% — маркетинг почти отсутствует.' };
+  }
+  if (share < 0.1) {
+    return { label: 'На плаву', status: '5–10% от выручки — поддерживаем продажи и узнаваемость.' };
+  }
+  if (share < 0.15) {
+    return { label: 'Умеренный рост', status: '10% от выручки — планомерно растим спрос.' };
+  }
+  return { label: 'Агрессивный рост', status: 'Более 15% — ставка на масштабирование и долю рынка.' };
+}
+
+const scenarioArchetypeMeta = {
+  base: {
+    shareOfRevenue: 0.05,
+    label: 'На плаву',
+    status: '5% от выручки — поддерживаем стабильность воронки.',
+    description: 'Базовый режим: держим основные каналы и фокус на эффективности.',
+    plays: ['Тонкая настройка unit-экономики', 'Локальные эксперименты без резких вложений'],
+    trafficStrategy: (channels) => normalizeShares(channels),
+  },
+  moderate: {
+    shareOfRevenue: 0.1,
+    label: 'Умеренный рост',
+    status: '10% от выручки — активируем новые сегменты и эксперименты.',
+    description: 'Подключаем дополнительные кампании и автоматизации для роста.',
+    plays: ['Перезапуск лид-магнитов и контента', 'CRM-автоматизация nurture-цепочек'],
+    trafficStrategy: (channels) => emphasizeByRank(channels, { top: 2, boost: 1.18, tail: 0.95 }),
+  },
+  aggressive: {
+    shareOfRevenue: 0.18,
+    label: 'Агрессивный рост',
+    status: 'Инвестируем >15% выручки для быстрого масштабирования.',
+    description: 'Ускоряем performance, ABM и product-led инициативы.',
+    plays: ['Performance-спринты и ростовые эксперименты каждую неделю', 'Глубокая аналитика CAC/LTV и cohort management'],
+    trafficStrategy: (channels) =>
+      emphasizeKeywords(channels, {
+        positivePattern: /(paid|performance|ads|abm|outbound|events|demand|growth|launch|promo)/i,
+        positiveWeight: 1.35,
+        fallbackWeight: 0.8,
+      }),
+  },
+  land: {
+    shareOfRevenue: 0.12,
+    label: 'Land & Expand',
+    status: '12% от выручки — удержание, лояльность и расширение внутри клиентов.',
+    description: 'Customer marketing, upsell и программы рекомендаций становятся основой роста.',
+    plays: ['Quarterly business review и customer marketing', 'Программы лояльности и петли рекомендаций'],
+    trafficStrategy: (channels) =>
+      emphasizeKeywords(channels, {
+        positivePattern: /(retention|ref|loyal|crm|community|success|customer|advocacy|partner)/i,
+        positiveWeight: 1.3,
+        fallbackWeight: 0.9,
+      }),
+  },
+  sales: {
+    shareOfRevenue: 0.03,
+    label: 'Только продажи',
+    status: 'Маркетинг <5% — упор на SDR и холодные касания.',
+    description: 'Маркетинг практически отсутствует: работаем через холодные продажи и партнерские сделки.',
+    plays: ['Обновление SDR playbook и скриптов', 'Sales enablement вместо маркетинговых активностей'],
+    trafficStrategy: () => [
+      {
+        id: 'cold-outbound',
+        name: 'Холодный outbound',
+        share: 55,
+        note: 'SDR-каденции, LinkedIn outreach, звонки.',
+      },
+      {
+        id: 'email-sequences',
+        name: 'Email-серии и nurture',
+        share: 25,
+        note: 'Мультиканальные письма, автоматические follow-up.',
+      },
+      {
+        id: 'partner-intros',
+        name: 'Партнеры и выездные встречи',
+        share: 20,
+        note: 'Партнерские интро, демо на площадке клиента.',
+      },
+    ],
+  },
+};
+
+function detectScenarioArchetype(scenario) {
+  if (!scenario) return 'base';
+  const key = `${scenario.id ?? ''} ${scenario.name ?? ''}`.toLowerCase();
+  if (/(sales|no-marketing|cold|outbound-only|bare|только продаж)/.test(key)) {
+    return 'sales';
+  }
+  if (/(land|expand|retention|loyal|aftermarket|referral|alumni|service|telemed|enterprise|partner|grant|success|mastermind|loyalty|alliance)/.test(key)) {
+    return 'land';
+  }
+  if (/(aggressive|hyper|scale|max|rocket|blitz|accelerate)/.test(key)) {
+    return 'aggressive';
+  }
+  if (/(growth|improved|evergreen|launch|digitization|promo|telemed|service|boost|expansion|animation|productized|digitization)/.test(key)) {
+    return 'moderate';
+  }
+  if (/(default|base|current|standard|steady|now|текущ)/.test(key)) {
+    return 'base';
+  }
+  return 'moderate';
+}
+
+function getScenarioMeta(scenario, fallbackChannels) {
+  if (!scenario) {
+    const meta = scenarioArchetypeMeta.base;
+    return {
+      shareOfRevenue: meta.shareOfRevenue,
+      label: meta.label,
+      status: meta.status,
+      description: meta.description,
+      plays: meta.plays,
+      trafficMix: meta.trafficStrategy(fallbackChannels),
+    };
+  }
+  const archetype = detectScenarioArchetype(scenario);
+  const baseMeta = scenarioArchetypeMeta[archetype] ?? scenarioArchetypeMeta.base;
+  const share = scenario.budget?.shareOfRevenue ?? baseMeta.shareOfRevenue;
+  const classification = getBudgetClassification(share);
+  const trafficMix = scenario.trafficMix?.length
+    ? normalizeShares(scenario.trafficMix)
+    : baseMeta.trafficStrategy(fallbackChannels);
+  return {
+    shareOfRevenue: share,
+    label: scenario.budget?.label ?? baseMeta.label ?? classification.label,
+    status: scenario.budget?.note ?? baseMeta.status ?? classification.status,
+    description: scenario.description ?? baseMeta.description,
+    plays: scenario.plays ?? baseMeta.plays,
+    trafficMix,
+  };
+}
+
 const conversionFromValues = (current, previous) => {
   if (!previous || previous === 0) return 100;
   return (current / previous) * 100;
@@ -204,6 +392,8 @@ function App() {
     return state.scenarios?.find((scenario) => scenario.id === scenarioId) ?? fallbackScenario;
   }, [scenarioId, state.scenarios]);
 
+  const scenarioMeta = useMemo(() => getScenarioMeta(currentScenario, state.trafficChannels), [currentScenario, state.trafficChannels]);
+
   const localeMap = { ru: 'ru-RU', en: 'en-US', de: 'de-DE', zh: 'zh-CN' };
   const locale = localeMap[language] ?? 'ru-RU';
   const numberFormatter = useMemo(() => {
@@ -216,6 +406,7 @@ function App() {
 
   const metrics = useMemo(() => {
     const scenarioAdjustments = currentScenario?.adjustments ?? {};
+    const scenarioZoneAdjustments = currentScenario?.zones ?? {};
     const leverMap = state.levers.reduce((acc, lever) => {
       if (activeLevers.has(lever.id)) {
         acc[lever.stageId] = (acc[lever.stageId] ?? 0) + (lever.conversionBoost ?? 0);
@@ -232,8 +423,9 @@ function App() {
     state.stages.forEach((stage, index) => {
       const prevBase = previousBaseValue ?? stage.value;
       const effectiveConversion = index === 0 ? 100 : stage.mode === 'percent' ? stage.conversion ?? conversionFromValues(stage.value, previousBaseValue ?? stage.value) : conversionFromValues(stage.value, previousBaseValue ?? stage.value);
-      const scenarioBoost = scenarioAdjustments?.[stage.id]?.conversion ?? 0;
-      const scenarioValueBoost = scenarioAdjustments?.[stage.id]?.value ?? 0;
+      const zoneAdjustment = scenarioZoneAdjustments?.[stage.zoneId] ?? {};
+      const scenarioBoost = (scenarioAdjustments?.[stage.id]?.conversion ?? 0) + (zoneAdjustment.conversion ?? 0);
+      const scenarioValueBoost = (scenarioAdjustments?.[stage.id]?.value ?? 0) + (zoneAdjustment.value ?? 0);
       const leverBoost = leverMap?.[stage.id] ?? 0;
 
       const baseValue = index === 0 || stage.mode === 'absolute'
@@ -288,8 +480,9 @@ function App() {
     const marketingLeads = marketingStage?.baseValue ?? 0;
     const improvedMarketingLeads = marketingStage?.improvedValue ?? marketingLeads;
 
-    const spendBase = marketingLeads * (state.finances.cpl ?? 0);
-    const spendImproved = improvedMarketingLeads * (state.finances.cpl ?? 0);
+    const budgetShare = scenarioMeta.shareOfRevenue ?? null;
+    const spendBase = budgetShare != null ? revenueBase * budgetShare : marketingLeads * (state.finances.cpl ?? 0);
+    const spendImproved = budgetShare != null ? revenueImproved * budgetShare : improvedMarketingLeads * (state.finances.cpl ?? 0);
     const dealsBase = finalBase;
     const dealsImproved = finalImproved;
     const revenueBase = dealsBase * (state.finances.avgCheck ?? 0);
@@ -364,6 +557,12 @@ function App() {
       deltaPercent,
       spendBase,
       spendImproved,
+      marketingBudgetShare: budgetShare,
+      marketingBudgetLabel: scenarioMeta.label,
+      marketingBudgetStatus: scenarioMeta.status,
+      scenarioDescription: scenarioMeta.description,
+      scenarioPlays: scenarioMeta.plays,
+      trafficMix: scenarioMeta.trafficMix,
       revenueBase,
       revenueImproved,
       roiBase,
@@ -377,7 +576,7 @@ function App() {
       churnRateImproved,
       retentionSummary,
     };
-  }, [state.stages, state.levers, state.finances, currentScenario, activeLevers, numberFormatter]);
+  }, [state.stages, state.levers, state.finances, currentScenario, scenarioMeta, activeLevers, numberFormatter]);
 
   const { stages: stageMetrics } = metrics;
 
@@ -644,9 +843,11 @@ function App() {
           onScenarioChange={handleScenarioChange}
         />
 
+        <ScenarioSummary scenario={currentScenario} metrics={metrics} locale={locale} />
+
         <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
           <section className="space-y-6">
-            <div className="funnel-gradient rounded-3xl border border-slate-800 bg-slate-900/60 p-6 shadow-xl shadow-indigo-950/40">
+            <div className="funnel-gradient card-animated rounded-3xl border border-slate-800 bg-slate-900/60 p-6 shadow-xl shadow-indigo-950/40">
               <FunnelSVG
                 stages={stageMetrics}
                 zones={state.zones}
@@ -655,7 +856,7 @@ function App() {
                 onStageFocus={setFocusedStageId}
                 locale={locale}
               />
-              <InsightsPanel metrics={metrics} zones={state.zones} locale={locale} trafficChannels={state.trafficChannels} />
+              <InsightsPanel metrics={metrics} zones={state.zones} locale={locale} trafficChannels={metrics.trafficMix} />
               <Stakeholders
                 title={t.stakeholders}
                 stakeholders={state.stakeholders}

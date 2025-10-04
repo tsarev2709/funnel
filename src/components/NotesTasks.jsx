@@ -39,26 +39,26 @@ function NotesTasks({ title, stages, onTasksChange, onExportTasks, onFocusStage 
   };
 
   return (
-    <section className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+    <section className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 card-animated">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-slate-100">{title}</h2>
         <div className="flex gap-2 text-xs text-slate-400">
           <button
             onClick={() => onExportTasks('json')}
-            className="flex items-center gap-2 rounded-md border border-slate-700 px-3 py-1 hover:border-cyan-400"
+            className="flex items-center gap-2 rounded-md border border-slate-700 px-3 py-1 transition hover:-translate-y-0.5 hover:border-cyan-400 active:scale-95"
           >
             <ArrowDownTrayIcon className="h-4 w-4" /> JSON
           </button>
           <button
             onClick={() => onExportTasks('csv')}
-            className="flex items-center gap-2 rounded-md border border-slate-700 px-3 py-1 hover:border-cyan-400"
+            className="flex items-center gap-2 rounded-md border border-slate-700 px-3 py-1 transition hover:-translate-y-0.5 hover:border-cyan-400 active:scale-95"
           >
             <ArrowDownTrayIcon className="h-4 w-4" /> CSV
           </button>
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3 text-sm text-slate-200">
+      <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3 text-sm text-slate-200 card-animated">
         <div className="flex flex-wrap items-center gap-2">
           <select
             value={newTaskStage}
@@ -79,7 +79,7 @@ function NotesTasks({ title, stages, onTasksChange, onExportTasks, onFocusStage 
           />
           <button
             onClick={handleAddTask}
-            className="flex items-center gap-2 rounded border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-200 hover:bg-emerald-500/20"
+            className="flex items-center gap-2 rounded border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-200 transition hover:-translate-y-0.5 hover:bg-emerald-500/20 active:scale-95"
           >
             <PlusIcon className="h-4 w-4" /> Добавить
           </button>
@@ -88,9 +88,12 @@ function NotesTasks({ title, stages, onTasksChange, onExportTasks, onFocusStage 
 
       <div className="space-y-3 text-sm text-slate-200">
         {stages.map((stage) => (
-          <div key={stage.id} className="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
+          <div key={stage.id} className="rounded-xl border border-slate-800 bg-slate-950/40 p-3 card-animated">
             <div className="flex items-center justify-between text-xs uppercase tracking-wide text-slate-500">
-              <button onClick={() => onFocusStage(stage.id)} className="text-left text-slate-300 hover:text-cyan-300">
+              <button
+                onClick={() => onFocusStage(stage.id)}
+                className="text-left text-slate-300 transition hover:-translate-y-0.5 hover:text-cyan-300"
+              >
                 {stage.name}
               </button>
               <span>{(stage.tasks ?? []).length} задач</span>
@@ -105,7 +108,10 @@ function NotesTasks({ title, stages, onTasksChange, onExportTasks, onFocusStage 
                     className="mt-[2px] rounded border-slate-600 bg-slate-900"
                   />
                   <span className={task.done ? 'line-through text-slate-500' : ''}>{task.text}</span>
-                  <button onClick={() => removeTask(stage.id, task.id)} className="ml-auto text-slate-500 hover:text-rose-400">
+                  <button
+                    onClick={() => removeTask(stage.id, task.id)}
+                    className="ml-auto text-slate-500 transition hover:-translate-y-0.5 hover:text-rose-400"
+                  >
                     ×
                   </button>
                 </label>

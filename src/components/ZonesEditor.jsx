@@ -3,19 +3,19 @@ import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 function ZonesEditor({ title, zones, onZoneChange, onZoneAdd, onZoneRemove }) {
   return (
-    <section className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+    <section className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 card-animated">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-slate-100">{title}</h2>
         <button
           onClick={onZoneAdd}
-          className="flex items-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-200 hover:bg-cyan-500/20"
+          className="flex items-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-200 transition hover:-translate-y-0.5 hover:bg-cyan-500/20 active:scale-95"
         >
           <PlusIcon className="h-4 w-4" /> Добавить зону
         </button>
       </div>
       <div className="space-y-3 text-sm text-slate-200">
         {zones.map((zone) => (
-          <div key={zone.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2">
+          <div key={zone.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2 card-animated">
             <div className="flex items-center gap-3">
               <span className="h-3 w-3 rounded-full" style={{ backgroundColor: zone.color }} />
               <input
@@ -32,7 +32,7 @@ function ZonesEditor({ title, zones, onZoneChange, onZoneAdd, onZoneRemove }) {
             </div>
             <button
               onClick={() => onZoneRemove(zone.id)}
-              className="rounded-md border border-rose-500/40 bg-rose-500/10 p-2 text-rose-200 hover:bg-rose-500/20"
+              className="transform rounded-md border border-rose-500/40 bg-rose-500/10 p-2 text-rose-200 transition hover:-translate-y-0.5 hover:bg-rose-500/20 active:scale-95"
             >
               <TrashIcon className="h-4 w-4" />
             </button>

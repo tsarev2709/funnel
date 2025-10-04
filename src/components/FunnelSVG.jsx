@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import { useMemo } from 'react';
+import { clsx } from 'clsx';
 
 const StageHeight = 140;
 const StageGap = 18;
@@ -111,7 +112,9 @@ function FunnelSVG({ stages, zones, presentationIndex, focusedStageId, onStageFo
                   stroke={isHighlighted ? '#38bdf8' : '#1e293b'}
                   strokeWidth={isHighlighted ? 3.5 : 1.5}
                   onClick={() => onStageFocus?.(stage.id)}
-                  className="cursor-pointer transition"
+                  className={clsx('stage-hover', {
+                    'filter drop-shadow-[0_18px_32px_rgba(59,130,246,0.35)]': isHighlighted,
+                  })}
                 />
                 <path
                   d={`M${xTopImproved},${yTop} L${xTopImproved + improvedTopWidth},${yTop} L${xBottomImproved + improvedBottomWidth},${yBottom} L${xBottomImproved},${yBottom} Z`}
