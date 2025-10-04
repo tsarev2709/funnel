@@ -8,6 +8,7 @@ import ZonesEditor from './components/ZonesEditor.jsx';
 import ScenarioTabs from './components/ScenarioTabs.jsx';
 import InsightsPanel from './components/InsightsPanel.jsx';
 import NotesTasks from './components/NotesTasks.jsx';
+import Stakeholders from './components/Stakeholders.jsx';
 import { ArrowDownTrayIcon, ArrowUpTrayIcon, LanguageIcon, PlayIcon, StopIcon } from '@heroicons/react/24/outline';
 import { clsx } from 'clsx';
 
@@ -34,6 +35,10 @@ const translations = {
     presentation: 'Режим презентации',
     stop: 'Стоп',
     newStage: 'Новый этап',
+    stakeholders: 'ЛПР и их KPI',
+    stakeholdersBaseLabel: 'База',
+    stakeholdersDeltaZero: 'Δ 0',
+    stakeholdersFocusLabel: 'Фокус улучшений',
   },
   en: {
     preset: 'Preset',
@@ -57,6 +62,10 @@ const translations = {
     presentation: 'Presentation mode',
     stop: 'Stop',
     newStage: 'New stage',
+    stakeholders: 'Decision makers & KPIs',
+    stakeholdersBaseLabel: 'Base',
+    stakeholdersDeltaZero: 'Δ 0',
+    stakeholdersFocusLabel: 'Improvement focus',
   },
   de: {
     preset: 'Preset',
@@ -80,6 +89,10 @@ const translations = {
     presentation: 'Präsentationsmodus',
     stop: 'Stop',
     newStage: 'Neue Stufe',
+    stakeholders: 'Entscheider & KPIs',
+    stakeholdersBaseLabel: 'Basis',
+    stakeholdersDeltaZero: 'Δ 0',
+    stakeholdersFocusLabel: 'Verbesserungsfokus',
   },
   zh: {
     preset: '预设',
@@ -103,6 +116,10 @@ const translations = {
     presentation: '演示模式',
     stop: '停止',
     newStage: '新阶段',
+    stakeholders: '决策人及其 KPI',
+    stakeholdersBaseLabel: '基线',
+    stakeholdersDeltaZero: 'Δ 0',
+    stakeholdersFocusLabel: '改进重点',
   },
 };
 
@@ -136,6 +153,7 @@ function loadPreset(preset) {
       share: channel.share,
       note: channel.note ?? '',
     })),
+    stakeholders: clone.stakeholders ?? [],
   };
 }
 
@@ -638,6 +656,17 @@ function App() {
                 locale={locale}
               />
               <InsightsPanel metrics={metrics} zones={state.zones} locale={locale} trafficChannels={state.trafficChannels} />
+              <Stakeholders
+                title={t.stakeholders}
+                stakeholders={state.stakeholders}
+                metrics={metrics}
+                locale={locale}
+                strings={{
+                  baseLabel: t.stakeholdersBaseLabel,
+                  deltaZero: t.stakeholdersDeltaZero,
+                  focusLabel: t.stakeholdersFocusLabel,
+                }}
+              />
             </div>
 
             <KPIs
