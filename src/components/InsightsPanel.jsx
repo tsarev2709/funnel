@@ -16,13 +16,13 @@ function InsightsPanel({ metrics, zones, locale, trafficChannels }) {
   const retention = retentionSummary ?? null;
   return (
     <div className="mt-6 grid gap-4 lg:grid-cols-4">
-      <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
+      <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 card-animated">
         <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
           <LightBulbIcon className="h-5 w-5 text-amber-300" /> Авто-инсайт
         </div>
         <p className="mt-2 text-sm text-slate-300">{insight}</p>
       </div>
-      <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
+      <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 card-animated">
         <h3 className="text-sm font-semibold text-slate-100">Бутылочное горлышко</h3>
         {bottleneck ? (
           <dl className="mt-2 space-y-1 text-sm text-slate-300">
@@ -41,7 +41,7 @@ function InsightsPanel({ metrics, zones, locale, trafficChannels }) {
           <p className="mt-2 text-sm text-slate-500">Горлышко не обнаружено.</p>
         )}
       </div>
-      <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
+      <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 card-animated">
         <h3 className="text-sm font-semibold text-slate-100">Повторные касания / RFM</h3>
         {retention ? (
           <dl className="mt-3 space-y-2 text-xs text-slate-300">
@@ -78,7 +78,7 @@ function InsightsPanel({ metrics, zones, locale, trafficChannels }) {
           <p className="mt-2 text-sm text-slate-500">Добавьте этап с зоной «Повторные касания».</p>
         )}
       </div>
-      <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
+      <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 card-animated">
         <h3 className="text-sm font-semibold text-slate-100">Бенчмарки зон</h3>
         <ul className="mt-2 space-y-2 text-xs text-slate-400">
           {zones.map((zone) => {
@@ -98,7 +98,7 @@ function InsightsPanel({ metrics, zones, locale, trafficChannels }) {
         </ul>
       </div>
       {trafficChannels?.length ? (
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 card-animated">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-100">
             <ChartPieIcon className="h-4 w-4 text-cyan-300" /> Каналы трафика
           </h3>

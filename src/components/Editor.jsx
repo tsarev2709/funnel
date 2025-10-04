@@ -49,7 +49,7 @@ function StageCard({ stage, zones, onStageChange, onStageRemove, onNoteChange, o
   };
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 card-animated">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 space-y-2">
           <input
@@ -124,7 +124,7 @@ function StageCard({ stage, zones, onStageChange, onStageRemove, onNoteChange, o
         </div>
         <button
           onClick={() => onStageRemove(stage.id)}
-          className="rounded-lg border border-rose-600/40 bg-rose-500/10 p-2 text-rose-200 hover:bg-rose-500/20"
+          className="transform rounded-lg border border-rose-600/40 bg-rose-500/10 p-2 text-rose-200 transition hover:-translate-y-0.5 hover:bg-rose-500/20 active:scale-95"
         >
           <TrashIcon className="h-4 w-4" />
         </button>
@@ -135,7 +135,7 @@ function StageCard({ stage, zones, onStageChange, onStageRemove, onNoteChange, o
         </div>
         <button
           onClick={() => onFocusStage(stage.id)}
-          className="rounded-md border border-cyan-500/40 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-200 hover:bg-cyan-500/20"
+          className="transform rounded-md border border-cyan-500/40 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-200 transition hover:-translate-y-0.5 hover:bg-cyan-500/20 active:scale-95"
         >
           Фокус на визуализации
         </button>
@@ -160,7 +160,7 @@ function Editor({ title, stages, zones, onStageChange, onStageAdd, onStageRemove
         <h2 className="text-lg font-semibold text-slate-100">{title}</h2>
         <button
           onClick={() => onStageAdd()}
-          className="flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200 hover:bg-emerald-500/20"
+          className="flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200 transition hover:-translate-y-0.5 hover:bg-emerald-500/20 active:scale-95"
         >
           <PlusIcon className="h-4 w-4" /> Добавить этап
         </button>

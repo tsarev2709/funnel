@@ -28,7 +28,7 @@ function Levers({ title, subtitle, levers, activeLevers, onToggle, stages, local
   }, {});
 
   return (
-    <section className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+    <section className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 card-animated">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-slate-100">{title}</h2>
         <span className="text-xs uppercase tracking-wide text-slate-500">{subtitle ?? copy.subtitle}</span>
@@ -40,25 +40,29 @@ function Levers({ title, subtitle, levers, activeLevers, onToggle, stages, local
           return (
             <div
               key={lever.id}
-              className={`rounded-2xl border ${isActive ? 'border-emerald-500/60 bg-emerald-500/10' : 'border-slate-800 bg-slate-950/40'} p-4`}
+              className={`rounded-2xl border ${isActive ? 'border-emerald-500/60 bg-emerald-500/10' : 'border-slate-800 bg-slate-950/40'} p-4 card-animated`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
-                  <SparklesIcon className="h-4 w-4 text-emerald-300" /> {lever.name}
+                    <SparklesIcon className="h-4 w-4 text-emerald-300" /> {lever.name}
+                  </div>
+                  <p className="mt-1 text-xs text-slate-400">{lever.description}</p>
+                  <p className="mt-2 text-xs text-slate-400">
+                    {copy.stageLabel}: <span className="text-slate-200">{stage?.name ?? '—'}</span>
+                  </p>
                 </div>
-                <p className="mt-1 text-xs text-slate-400">{lever.description}</p>
-                <p className="mt-2 text-xs text-slate-400">
-                  {copy.stageLabel}: <span className="text-slate-200">{stage?.name ?? '—'}</span>
-                </p>
+                <button
+                  onClick={() => onToggle(lever.id)}
+                  className={`transform rounded-lg border px-3 py-2 text-xs font-semibold transition active:scale-95 ${
+                    isActive
+                      ? 'border-emerald-400 bg-emerald-500/20 text-emerald-100 hover:-translate-y-0.5'
+                      : 'border-slate-700 bg-slate-900/60 text-slate-200 hover:-translate-y-0.5 hover:border-emerald-400'
+                  }`}
+                >
+                  {isActive ? copy.active : copy.activate}
+                </button>
               </div>
-              <button
-                onClick={() => onToggle(lever.id)}
-                className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${isActive ? 'border-emerald-400 bg-emerald-500/20 text-emerald-100' : 'border-slate-700 bg-slate-900/60 text-slate-200 hover:border-emerald-400'}`}
-              >
-                {isActive ? copy.active : copy.activate}
-              </button>
-            </div>
             <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-400">
               <span className="rounded-full border border-emerald-400/60 bg-emerald-400/10 px-3 py-1 text-emerald-200">
                 +{numberFormatter.format(lever.conversionBoost)} п.п. конверсии

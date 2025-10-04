@@ -7,6 +7,24 @@ export const defaultZones = [
 
 const note = (text) => text;
 
+const createSalesOnlyScenario = (overrides = {}) => ({
+  id: 'sales-only',
+  name: 'Только продажи',
+  description: 'Маркетинг практически остановлен: продажи тянут выручку за счёт холодных касаний.',
+  adjustments: {},
+  zones: {
+    marketing: { value: -60, conversion: -15 },
+    retention: { value: -25 },
+  },
+  trafficMix: [
+    { id: 'cold-outbound', name: 'Холодные звонки', share: 55, note: 'SDR-каденции, LinkedIn outreach, холодные письма.' },
+    { id: 'email-cadence', name: 'Email nurture', share: 25, note: 'Авто-серии писем вместо маркетинговых кампаний.' },
+    { id: 'field-demos', name: 'Выездные встречи', share: 20, note: 'Демо на стороне клиента, партнёрские интро.' },
+  ],
+  plays: ['Перепрошивка SDR playbook', 'Sales enablement вместо маркетинга'],
+  ...overrides,
+});
+
 export const presets = [
   {
     id: 'b2b-saas',
@@ -255,6 +273,7 @@ export const presets = [
     ],
     scenarios: [
       { id: 'base', name: 'Текущая', adjustments: {} },
+      createSalesOnlyScenario(),
       {
         id: 'improved',
         name: 'Умеренный рост',
@@ -514,6 +533,7 @@ export const presets = [
     ],
     scenarios: [
       { id: 'current', name: 'Текущая', adjustments: {} },
+      createSalesOnlyScenario(),
       {
         id: 'service-up',
         name: 'Опора на сервис',
@@ -643,6 +663,7 @@ export const presets = [
     ],
     scenarios: [
       { id: 'standard', name: 'Текущая', adjustments: {} },
+      createSalesOnlyScenario(),
       {
         id: 'telemed',
         name: 'Телемедицина',
@@ -685,6 +706,7 @@ export const presets = [
     ],
     scenarios: [
       { id: 'default', name: 'База', adjustments: {} },
+      createSalesOnlyScenario(),
       { id: 'promo', name: 'Promo сезон', adjustments: { 'add-to-cart': { conversion: 3 }, paid: { conversion: 2 } } },
       { id: 'retention-boost', name: 'Retention boost', adjustments: { repeat: { conversion: 6 }, reactivation: { conversion: 7 } } },
     ],
@@ -721,6 +743,7 @@ export const presets = [
     ],
     scenarios: [
       { id: 'launch', name: 'Запуск', adjustments: {} },
+      createSalesOnlyScenario(),
       { id: 'evergreen', name: 'Evergreen', adjustments: { warm: { conversion: 5 } } },
       { id: 'animation-push', name: 'Animated push', adjustments: { audience: { value: 18 }, leads: { conversion: 4 }, retention: { conversion: 6 } } },
       { id: 'alumni-enterprise', name: 'Alumni enterprise', adjustments: { alumni: { conversion: 8 }, retention: { conversion: 4 } } },
@@ -756,6 +779,7 @@ export const presets = [
     ],
     scenarios: [
       { id: 'base', name: 'База', adjustments: {} },
+      createSalesOnlyScenario(),
       { id: 'expansion', name: 'Экспансия', adjustments: { leads: { conversion: 5 }, qualification: { conversion: 4 } } },
       { id: 'referral-growth', name: 'Referral growth', adjustments: { loyal: { conversion: 7 } } },
     ],
@@ -792,6 +816,7 @@ export const presets = [
     ],
     scenarios: [
       { id: 'base', name: 'Текущая', adjustments: {} },
+      createSalesOnlyScenario(),
       { id: 'mastermind', name: 'Mastermind рост', adjustments: { vip: { conversion: 8 }, community: { conversion: 5 } } },
       { id: 'productized', name: 'Productized услуги', adjustments: { proposal: { conversion: 6 }, clients: { conversion: 5 } } },
     ],
@@ -828,6 +853,7 @@ export const presets = [
     ],
     scenarios: [
       { id: 'base', name: 'Текущая', adjustments: {} },
+      createSalesOnlyScenario(),
       { id: 'enterprise', name: 'Enterprise push', adjustments: { pilot: { conversion: 6 }, deployment: { conversion: 4 } } },
       { id: 'grant', name: 'Грантовая программа', adjustments: { poc: { conversion: 5 }, retained: { conversion: 5 } } },
     ],
@@ -865,6 +891,7 @@ export const presets = [
     ],
     scenarios: [
       { id: 'steady', name: 'Базовый', adjustments: {} },
+      createSalesOnlyScenario(),
       { id: 'digitization', name: 'Цифровая трансформация', adjustments: { demo: { conversion: 4 }, 'go-live': { conversion: 5 } } },
       { id: 'partner-cosell', name: 'Co-sell с партнёрами', adjustments: { qualified: { conversion: 3 }, expansion: { conversion: 6 } } },
     ],
@@ -890,7 +917,132 @@ export const presets = [
     ],
     scenarios: [
       { id: 'now', name: 'Текущий', adjustments: {} },
+      createSalesOnlyScenario(),
       { id: 'growth', name: 'Рост', adjustments: { subscribers: { conversion: 1 }, proposal: { conversion: 2 } } },
+    ],
+  },
+  {
+    id: 'fintech-payments',
+    name: 'Финтех · платежи B2B',
+    logo: '💳',
+    description: 'Платформа подписок и платежей для SMB. Комбо контента, партнёрств и outbound.',
+    zones: defaultZones,
+    finances: { avgCheck: 3800, cpl: 90, cac: 480, ltv: 18600 },
+    trafficChannels: [
+      { id: 'inbound', name: 'Контент + inbound', share: 28, note: 'Платёжные кейсы, ROI-калькуляторы, SEO.' },
+      { id: 'partners', name: 'Партнёрские интеграции', share: 22, note: 'Бухгалтерские сервисы, ERP, банки.' },
+      { id: 'outbound', name: 'Outbound/ABM', share: 18, note: 'Sales cadences + LinkedIn ads.' },
+      { id: 'events', name: 'Финтех мероприятия', share: 16, note: 'Форумы, закрытые CFO завтраки.' },
+      { id: 'referrals', name: 'Referral & advocacy', share: 16, note: 'Финансовые консультанты, customer advisory board.' },
+    ],
+    stages: [
+      { id: 'research-traffic', name: 'Трафик и лид-магниты', mode: 'absolute', value: 48000, conversion: 100, benchmark: 100, zoneId: 'marketing', note: note('SEO, отчёты по платежам, калькуляторы.'), tasks: [] },
+      { id: 'qualified', name: 'SQL', mode: 'percent', value: 9600, conversion: 20, benchmark: 22, zoneId: 'marketing', note: note('ABM, вебинары для CFO.'), tasks: [] },
+      { id: 'demo', name: 'Демо платформы', mode: 'percent', value: 3840, conversion: 40, benchmark: 42, zoneId: 'sales', note: note('Product demo + платежный аудит.'), tasks: [] },
+      { id: 'pilot', name: 'Пилотный период', mode: 'percent', value: 2304, conversion: 60, benchmark: 58, zoneId: 'sales', note: note('Интеграция с CRM и ERP клиента.'), tasks: [] },
+      { id: 'contracts', name: 'Подписали контракт', mode: 'percent', value: 1267, conversion: 55, benchmark: 52, zoneId: 'sales', note: note('Юр. блок, KYC, тарифы.'), tasks: [] },
+      { id: 'retained', name: 'Активные мерчанты', mode: 'percent', value: 1013, conversion: 80, benchmark: 78, zoneId: 'success', note: note('Поддержка, anti-fraud, SLA.'), tasks: [] },
+      { id: 'expansion', name: 'Расширение чека', mode: 'percent', value: 486, conversion: 48, benchmark: 45, zoneId: 'retention', note: note('Cross-sell модулей, международные платежи.'), tasks: [] },
+    ],
+    levers: [
+      { id: 'roi-calculator', stageId: 'qualified', name: 'ROI-калькулятор', description: 'Персональный расчёт экономики платежей.', conversionBoost: 2.5, tactics: ['Interactive deck', 'Авто-отчёт CFO'] },
+      { id: 'compliance-lab', stageId: 'pilot', name: 'Compliance Lab', description: 'Команда помогает пройти PCI DSS / 54-ФЗ.', conversionBoost: 3.8, tactics: ['Audit checklist', 'Воркшоп по регуляторике'] },
+      { id: 'payments-hub', stageId: 'contracts', name: 'Payments Hub', description: 'Пакет готовых интеграций и API sandbox.', conversionBoost: 4.2, tactics: ['Marketplace интеграций', 'Тех. кабинет для разработчиков'] },
+      { id: 'growth-team', stageId: 'expansion', name: 'Growth squad', description: 'Совместные гипотезы LTV, апсейл новых модулей.', conversionBoost: 5.1, tactics: ['QBR с CFO', 'Геймификация KPI мерчанта'] },
+    ],
+    scenarios: [
+      { id: 'base', name: 'База', adjustments: {} },
+      createSalesOnlyScenario({ description: 'Маркетинг заморожен, работаем через партнёров и SDR.' }),
+      {
+        id: 'accelerate',
+        name: 'Accelerated growth',
+        adjustments: {
+          'research-traffic': { value: 14 },
+          qualified: { conversion: 3 },
+          demo: { conversion: 4 },
+          contracts: { conversion: 3 },
+        },
+      },
+      {
+        id: 'bank-alliances',
+        name: 'Bank alliances',
+        adjustments: {
+          contracts: { conversion: 2 },
+          retained: { conversion: 4 },
+          expansion: { conversion: 5 },
+        },
+        zones: { retention: { conversion: 3 } },
+      },
+    ],
+  },
+  {
+    id: 'mobile-gaming',
+    name: 'Mobile Gaming · F2P',
+    logo: '🕹️',
+    description: 'Free-to-play игра с liveops. Скейлим UA, монетизацию и удержание.',
+    zones: defaultZones,
+    finances: { avgCheck: 28, cpl: 1.8, cac: 3.2, ltv: 62 },
+    trafficChannels: [
+      { id: 'ua', name: 'User Acquisition', share: 38, note: 'Meta Ads, Google App Campaigns, DSP.' },
+      { id: 'aso', name: 'ASO + сторы', share: 16, note: 'ASO, витрины, поисковые кампании.' },
+      { id: 'influencers', name: 'Стримеры и инфлюенсеры', share: 16, note: 'YouTube, Twitch, TikTok интеграции.' },
+      { id: 'community', name: 'Комьюнити и соцсети', share: 15, note: 'Discord, Telegram, ивенты в игре.' },
+      { id: 'cross-promo', name: 'Кросс-промо', share: 15, note: 'Сеть собственных игр и партнёров.' },
+    ],
+    stages: [
+      { id: 'installs', name: 'Установки', mode: 'absolute', value: 520000, conversion: 100, benchmark: 100, zoneId: 'marketing', note: note('UA + органика.'), tasks: [] },
+      { id: 'tutorial', name: 'Прошли туториал', mode: 'percent', value: 353600, conversion: 68, benchmark: 70, zoneId: 'marketing', note: note('Основной drop — скучный onboarding.'), tasks: [] },
+      { id: 'day1', name: 'Retention D1', mode: 'percent', value: 159120, conversion: 45, benchmark: 47, zoneId: 'success', note: note('Liveops события, push коммуникации.'), tasks: [] },
+      { id: 'day7', name: 'Retention D7', mode: 'percent', value: 44553, conversion: 28, benchmark: 30, zoneId: 'success', note: note('Battle pass, события в гильдиях.'), tasks: [] },
+      { id: 'payers', name: 'Плательщики', mode: 'percent', value: 5346, conversion: 12, benchmark: 11, zoneId: 'sales', note: note('IAP офферы и limited-time bundles.'), tasks: [] },
+      { id: 'subscriptions', name: 'Подписки/season pass', mode: 'percent', value: 1871, conversion: 35, benchmark: 32, zoneId: 'retention', note: note('VIP-подписка и liveops бонусы.'), tasks: [] },
+      { id: 'guilds', name: 'Гильдии/сообщество', mode: 'percent', value: 561, conversion: 30, benchmark: 28, zoneId: 'retention', note: note('Социальный граф, PvP события.'), tasks: [] },
+    ],
+    levers: [
+      { id: 'tutorial-rework', stageId: 'tutorial', name: 'Rework туториала', description: 'Интерактивный onboarding и персонализация.', conversionBoost: 4.5, tactics: ['Сегментация UA по каналам', 'Скип кнопка + награды'] },
+      { id: 'liveops-calendar', stageId: 'day7', name: 'LiveOps календарь', description: 'События каждые 3-4 дня с кооперативом.', conversionBoost: 5.2, tactics: ['Сезонные челленджи', 'Guild raid каждые выходные'] },
+      { id: 'monetization-lab', stageId: 'payers', name: 'Монетизационный лаб', description: 'A/B тесты офферов, динамический прайсинг.', conversionBoost: 3.8, tactics: ['Bundle builder', 'Offer personalization по когортам'] },
+      { id: 'vip-program', stageId: 'subscriptions', name: 'VIP программа', description: 'Уровни подписки, эксклюзивные предметы.', conversionBoost: 4.6, tactics: ['Tiered perks', 'Influencer эксклюзивы'] },
+    ],
+    scenarios: [
+      { id: 'base', name: 'База', adjustments: {} },
+      createSalesOnlyScenario({
+        description: 'UA урезан, остаётся органика, кросс-промо и работа комьюнити.',
+        zones: { marketing: { value: -70, conversion: -20 }, retention: { value: -18 } },
+        trafficMix: [
+          { id: 'organic', name: 'ASO + органика', share: 60, note: 'ASO, рекомендации, кросс-промо.' },
+          { id: 'community-only', name: 'Комьюнити', share: 25, note: 'Discord, ивенты, UGC.' },
+          { id: 'influencers-lite', name: 'Инфлюенсеры', share: 15, note: 'Бартерные интеграции и стримы.' },
+        ],
+      }),
+      {
+        id: 'launch-event',
+        name: 'Launch event',
+        adjustments: {
+          installs: { value: 22 },
+          tutorial: { conversion: 5 },
+          payers: { conversion: 2 },
+        },
+      },
+      {
+        id: 'liveops-growth',
+        name: 'LiveOps growth',
+        adjustments: {
+          day1: { conversion: 3 },
+          day7: { conversion: 5 },
+          subscriptions: { conversion: 4 },
+          guilds: { conversion: 5 },
+        },
+        zones: { retention: { conversion: 4 } },
+      },
+      {
+        id: 'monetization-max',
+        name: 'Monetization max',
+        adjustments: {
+          payers: { conversion: 3 },
+          subscriptions: { conversion: 5 },
+        },
+      },
     ],
   },
 ];
