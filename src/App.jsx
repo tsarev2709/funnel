@@ -480,13 +480,13 @@ function App() {
     const marketingLeads = marketingStage?.baseValue ?? 0;
     const improvedMarketingLeads = marketingStage?.improvedValue ?? marketingLeads;
 
-    const budgetShare = scenarioMeta.shareOfRevenue ?? null;
-    const spendBase = budgetShare != null ? revenueBase * budgetShare : marketingLeads * (state.finances.cpl ?? 0);
-    const spendImproved = budgetShare != null ? revenueImproved * budgetShare : improvedMarketingLeads * (state.finances.cpl ?? 0);
     const dealsBase = finalBase;
     const dealsImproved = finalImproved;
     const revenueBase = dealsBase * (state.finances.avgCheck ?? 0);
     const revenueImproved = dealsImproved * (state.finances.avgCheck ?? 0);
+    const budgetShare = scenarioMeta.shareOfRevenue ?? null;
+    const spendBase = budgetShare != null ? revenueBase * budgetShare : marketingLeads * (state.finances.cpl ?? 0);
+    const spendImproved = budgetShare != null ? revenueImproved * budgetShare : improvedMarketingLeads * (state.finances.cpl ?? 0);
     const cac = state.finances.cac ?? 0;
     const ltv = state.finances.ltv ?? 0;
     const grossMarginBase = revenueBase - spendBase - dealsBase * cac;
