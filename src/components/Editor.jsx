@@ -14,6 +14,7 @@ function StageCard({ stage, zones, onStageChange, onStageRemove, onNoteChange, o
   const numberFormatter = useMemo(() => createFormatter(locale), [locale]);
   const zoneOptions = zones ?? [];
   const isPercentMode = stage.mode !== 'absolute';
+  const trafficChannels = stage.trafficChannels ?? [];
 
   const handleValueChange = (value) => {
     const numeric = Number(value);
@@ -46,6 +47,24 @@ function StageCard({ stage, zones, onStageChange, onStageRemove, onNoteChange, o
       const absoluteValue = stage.baseValue ?? stage.value;
       onStageChange(stage.id, { mode: 'absolute', value: absoluteValue });
     }
+  };
+
+  const handleTrafficChannelChange = (channelId, patch) => {
+    const next = trafficChannels.map((channel) => (channel.id === channelId ? { ...channel, ...patch } : channel));
+    onStageChange(stage.id, { trafficChannels: next });
+  };
+
+  const handleTrafficChannelAdd = () => {
+    const id = `${stage.id}-traffic-${Date.now()}`;
+    onStageChange(stage.id, {
+      trafficChannels: [...trafficChannels, { id, name: '', share: 0, note: '' }],
+    });
+  };
+
+  const handleTrafficChannelRemove = (channelId) => {
+    onStageChange(stage.id, {
+      trafficChannels: trafficChannels.filter((channel) => channel.id !== channelId),
+    });
   };
 
   return (
@@ -121,6 +140,63 @@ function StageCard({ stage, zones, onStageChange, onStageRemove, onNoteChange, o
               className="min-h-[80px] rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm"
             />
           </label>
+          <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-xs uppercase tracking-wide text-slate-400">Каналы трафика этапа</span>
+              <button
+                onClick={handleTrafficChannelAdd}
+                className="flex items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-200 transition hover:-translate-y-0.5 hover:bg-emerald-500/20 active:scale-95"
+              >
+                <PlusIcon className="h-3.5 w-3.5" /> Канал
+              </button>
+            </div>
+            {trafficChannels.length ? (
+              <div className="space-y-3">
+                {trafficChannels.map((channel) => (
+                  <div key={channel.id} className="space-y-2 rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                      <input
+                        value={channel.name ?? ''}
+                        onChange={(event) => handleTrafficChannelChange(channel.id, { name: event.target.value })}
+                        placeholder="Название канала"
+                        className="flex-1 rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 focus:border-cyan-400 focus:outline-none"
+                      />
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={channel.share ?? 0}
+                          onChange={(event) => {
+                            const numeric = Number(event.target.value);
+                            handleTrafficChannelChange(channel.id, {
+                              share: Number.isFinite(numeric) ? numeric : 0,
+                            });
+                          }}
+                          className="w-20 rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm"
+                        />
+                        <span className="text-xs text-slate-500">%</span>
+                      </div>
+                      <button
+                        onClick={() => handleTrafficChannelRemove(channel.id)}
+                        className="self-start rounded-lg border border-rose-600/40 bg-rose-500/10 p-2 text-rose-200 transition hover:-translate-y-0.5 hover:bg-rose-500/20 active:scale-95"
+                        title="Удалить канал"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <textarea
+                      value={channel.note ?? ''}
+                      onChange={(event) => handleTrafficChannelChange(channel.id, { note: event.target.value })}
+                      placeholder="Комментарий, подсказки, CTA"
+                      className="w-full rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-slate-200 focus:border-cyan-400 focus:outline-none"
+                      rows={2}
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500">Добавьте источники трафика для этого этапа.</p>
+            )}
+          </div>
         </div>
         <button
           onClick={() => onStageRemove(stage.id)}

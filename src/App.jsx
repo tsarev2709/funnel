@@ -10,7 +10,7 @@ import ScenarioSummary from './components/ScenarioSummary.jsx';
 import InsightsPanel from './components/InsightsPanel.jsx';
 import NotesTasks from './components/NotesTasks.jsx';
 import Stakeholders from './components/Stakeholders.jsx';
-import { ArrowDownTrayIcon, ArrowUpTrayIcon, LanguageIcon, PlayIcon, StopIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, ArrowUpTrayIcon, LanguageIcon, PlayIcon, StopIcon, PlusCircleIcon } from '@heroicons/react/24/outline';
 import { clsx } from 'clsx';
 
 const translations = {
@@ -40,6 +40,10 @@ const translations = {
     stakeholdersBaseLabel: 'База',
     stakeholdersDeltaZero: 'Δ 0',
     stakeholdersFocusLabel: 'Фокус улучшений',
+    newWorkspace: 'Новая карточка',
+    logoPlaceholder: 'Эмодзи',
+    namePlaceholder: 'Компания или продукт',
+    descriptionPlaceholder: 'Описание или позиционирование',
   },
   en: {
     preset: 'Preset',
@@ -67,6 +71,10 @@ const translations = {
     stakeholdersBaseLabel: 'Base',
     stakeholdersDeltaZero: 'Δ 0',
     stakeholdersFocusLabel: 'Improvement focus',
+    newWorkspace: 'New card',
+    logoPlaceholder: 'Emoji',
+    namePlaceholder: 'Company or product',
+    descriptionPlaceholder: 'Description or positioning',
   },
   de: {
     preset: 'Preset',
@@ -94,6 +102,10 @@ const translations = {
     stakeholdersBaseLabel: 'Basis',
     stakeholdersDeltaZero: 'Δ 0',
     stakeholdersFocusLabel: 'Verbesserungsfokus',
+    newWorkspace: 'Neue Karte',
+    logoPlaceholder: 'Emoji',
+    namePlaceholder: 'Unternehmen oder Produkt',
+    descriptionPlaceholder: 'Beschreibung oder Positionierung',
   },
   zh: {
     preset: '预设',
@@ -121,6 +133,10 @@ const translations = {
     stakeholdersBaseLabel: '基线',
     stakeholdersDeltaZero: 'Δ 0',
     stakeholdersFocusLabel: '改进重点',
+    newWorkspace: '新卡片',
+    logoPlaceholder: '表情',
+    namePlaceholder: '公司或产品',
+    descriptionPlaceholder: '描述或定位',
   },
 };
 
@@ -136,29 +152,97 @@ function deepClone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function loadPreset(preset) {
-  const clone = deepClone(preset);
+const fallbackScenario = { id: 'base', name: 'Base', adjustments: {} };
+
+function normalizeTrafficChannel(channel, index, prefix = 'traffic') {
+  const numericShare = Number(channel?.share);
   return {
-    id: clone.id,
-    name: clone.name,
-    description: clone.description,
-    logo: clone.logo,
-    stages: clone.stages,
-    zones: clone.zones?.length ? clone.zones : deepClone(defaultZones),
-    levers: clone.levers || [],
-    finances: clone.finances || { avgCheck: 0, cpl: 0, cac: 0, ltv: 0 },
-    scenarios: clone.scenarios || [{ id: 'base', name: 'Base', adjustments: {} }],
-    trafficChannels: (clone.trafficChannels || []).map((channel, index) => ({
-      id: channel.id ?? `traffic-${index}`,
-      name: channel.name,
-      share: channel.share,
-      note: channel.note ?? '',
-    })),
-    stakeholders: clone.stakeholders ?? [],
+    id: channel?.id ?? `${prefix}-${index}`,
+    name: channel?.name ?? '',
+    share: Number.isFinite(numericShare) ? numericShare : 0,
+    note: channel?.note ?? '',
   };
 }
 
-const fallbackScenario = { id: 'base', name: 'Base', adjustments: {} };
+function normalizeStage(stage, index) {
+  const id = stage?.id ?? `stage-${index}`;
+  const numericValue = Number(stage?.value);
+  const numericConversion = Number(stage?.conversion);
+  const numericBenchmark = Number(stage?.benchmark);
+  const mode = stage?.mode === 'absolute' ? 'absolute' : 'percent';
+  return {
+    id,
+    name: stage?.name ?? `Stage ${index + 1}`,
+    mode,
+    value: Number.isFinite(numericValue) ? numericValue : 0,
+    conversion:
+      mode === 'absolute'
+        ? Number.isFinite(numericConversion)
+          ? numericConversion
+          : 100
+        : Number.isFinite(numericConversion)
+          ? numericConversion
+          : 0,
+    benchmark: Number.isFinite(numericBenchmark) ? numericBenchmark : null,
+    zoneId: stage?.zoneId ?? 'marketing',
+    note: stage?.note ?? '',
+    tasks: (stage?.tasks ?? []).map((task, taskIndex) => ({
+      id: task?.id ?? `${id}-task-${taskIndex}`,
+      text: task?.text ?? '',
+      done: Boolean(task?.done),
+    })),
+    trafficChannels: (stage?.trafficChannels ?? []).map((channel, channelIndex) =>
+      normalizeTrafficChannel(channel, channelIndex, `${id}-traffic`),
+    ),
+  };
+}
+
+function normalizeState(input) {
+  const clone = deepClone(input ?? {});
+  const zones = clone.zones?.length ? clone.zones : deepClone(defaultZones);
+  const finances = clone.finances ?? {};
+  const parseNumeric = (value) => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : 0;
+  };
+  return {
+    id: clone.id ?? 'custom',
+    name: clone.name ?? '',
+    description: clone.description ?? '',
+    logo: clone.logo ?? '📈',
+    stages: (clone.stages ?? []).map((stage, index) => normalizeStage(stage, index)),
+    zones: zones.map((zone, index) => ({
+      id: zone.id ?? `zone-${index}`,
+      name: zone.name ?? `Zone ${index + 1}`,
+      color: zone.color ?? '#1d4ed8',
+    })),
+    levers: (clone.levers ?? []).map((lever, index) => ({
+      ...lever,
+      id: lever.id ?? `lever-${index}`,
+    })),
+    finances: {
+      avgCheck: parseNumeric(finances.avgCheck),
+      cpl: parseNumeric(finances.cpl),
+      cac: parseNumeric(finances.cac),
+      ltv: parseNumeric(finances.ltv),
+    },
+    scenarios: (clone.scenarios?.length ? clone.scenarios : [fallbackScenario]).map((scenario, index) => ({
+      ...scenario,
+      id: scenario.id ?? `scenario-${index}`,
+      name: scenario.name ?? `Scenario ${index + 1}`,
+      adjustments: scenario.adjustments ?? {},
+      zones: scenario.zones ?? {},
+      plays: scenario.plays ?? [],
+    })),
+    trafficChannels: (clone.trafficChannels ?? []).map((channel, index) => normalizeTrafficChannel(channel, index)),
+    stakeholders: clone.stakeholders ?? [],
+    locale: clone.locale,
+  };
+}
+
+function loadPreset(preset) {
+  return normalizeState(preset);
+}
 
 function normalizeShares(channels) {
   if (!channels?.length) return [];
@@ -353,24 +437,40 @@ const conversionFromValues = (current, previous) => {
 };
 
 function App() {
-  const [language, setLanguage] = useState('ru');
-  const [presetId, setPresetId] = useState(presetLibrary[0]?.id);
-  const [scenarioId, setScenarioId] = useState(presetLibrary[0]?.scenarios?.[0]?.id ?? fallbackScenario.id);
-  const [state, setState] = useState(() => loadPreset(presetLibrary[0]));
+  const initialPreset = useMemo(() => presetLibrary[0] ?? {}, []);
+  const initialState = useMemo(() => loadPreset(initialPreset), [initialPreset]);
+  const initialScenarioId = initialState.scenarios?.[0]?.id ?? fallbackScenario.id;
+  const initialLanguage = (() => {
+    const candidate = initialState.locale ?? initialPreset.locale;
+    if (candidate && translations[candidate]) {
+      return candidate;
+    }
+    return 'ru';
+  })();
+
+  const [language, setLanguage] = useState(initialLanguage);
+  const [presetId, setPresetId] = useState(initialPreset.id ?? initialState.id ?? 'custom');
+  const [state, setState] = useState(initialState);
+  const [scenarioId, setScenarioId] = useState(initialScenarioId);
   const [activeLevers, setActiveLevers] = useState(() => new Set());
   const [focusedStageId, setFocusedStageId] = useState(null);
   const [presentation, setPresentation] = useState(false);
   const [presentationIndex, setPresentationIndex] = useState(null);
 
-  useEffect(() => {
-    const preset = presetLibrary.find((item) => item.id === presetId) ?? presetLibrary[0];
+  const applyPreset = (id) => {
+    const preset = presetLibrary.find((item) => item.id === id) ?? presetLibrary[0];
     const loaded = loadPreset(preset);
+    setPresetId(id);
     setState(loaded);
     setScenarioId(loaded.scenarios?.[0]?.id ?? fallbackScenario.id);
     setActiveLevers(new Set());
     setFocusedStageId(null);
     setPresentation(false);
-  }, [presetId]);
+    const localeCandidate = loaded.locale ?? preset?.locale;
+    if (localeCandidate && translations[localeCandidate]) {
+      setLanguage(localeCandidate);
+    }
+  };
 
   useEffect(() => {
     if (!presentation) {
@@ -387,6 +487,26 @@ function App() {
     }, 2200);
     return () => clearInterval(interval);
   }, [presentation, state.stages.length]);
+
+  const handleMetaChange = (patch) => {
+    setState((prev) => ({ ...prev, ...patch }));
+  };
+
+  const handleCreateNewWorkspace = () => {
+    const blank = presetLibrary.find((item) => item.id === 'custom');
+    if (blank) {
+      applyPreset(blank.id);
+      return;
+    }
+    const template = normalizeState({});
+    setPresetId('custom');
+    setState(template);
+    setScenarioId(template.scenarios?.[0]?.id ?? fallbackScenario.id);
+    setActiveLevers(new Set());
+    setFocusedStageId(null);
+    setPresentation(false);
+    setLanguage('ru');
+  };
 
   const currentScenario = useMemo(() => {
     return state.scenarios?.find((scenario) => scenario.id === scenarioId) ?? fallbackScenario;
@@ -600,6 +720,7 @@ function App() {
       note: '',
       zoneId: zoneId ?? previous?.zoneId ?? state.zones[0]?.id,
       tasks: [],
+      trafficChannels: [],
     };
     setState((prev) => ({ ...prev, stages: [...prev.stages, newStage] }));
   };
@@ -673,6 +794,7 @@ function App() {
     const payload = {
       presetId,
       scenarioId,
+      language,
       state,
       activeLevers: Array.from(activeLevers),
       timestamp: new Date().toISOString(),
@@ -713,10 +835,17 @@ function App() {
     }
     const payload = JSON.parse(text);
     if (payload?.state) {
-      setPresetId(payload.presetId ?? presetId);
-      setState(payload.state);
-      setScenarioId(payload.scenarioId ?? payload.state?.scenarios?.[0]?.id ?? fallbackScenario.id);
+      const normalized = normalizeState(payload.state);
+      if (payload.presetId && payload.presetId !== presetId) {
+        setPresetId(payload.presetId);
+      }
+      setState(normalized);
+      setScenarioId(payload.scenarioId ?? normalized.scenarios?.[0]?.id ?? fallbackScenario.id);
       setActiveLevers(new Set(payload.activeLevers ?? []));
+      const localeCandidate = payload.language ?? normalized.locale;
+      if (localeCandidate && translations[localeCandidate]) {
+        setLanguage(localeCandidate);
+      }
     }
   };
 
@@ -763,21 +892,43 @@ function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-[1440px] px-6 pb-24">
-        <header className="flex flex-wrap items-center gap-4 border-b border-slate-800 py-6">
-          <div className="flex items-center gap-2 text-xl font-semibold text-slate-50">
-            <span className="text-3xl">{state.logo ?? '📈'}</span>
-            <div>
-              <div>{state.name}</div>
-              <p className="text-sm text-slate-400">{state.description}</p>
+        <header className="flex flex-wrap items-start gap-4 border-b border-slate-800 py-6">
+          <div className="flex flex-wrap items-center gap-3 text-xl font-semibold text-slate-50">
+            <input
+              value={state.logo ?? ''}
+              onChange={(event) => handleMetaChange({ logo: event.target.value })}
+              placeholder={t.logoPlaceholder}
+              maxLength={4}
+              className="h-14 w-16 rounded-xl border border-slate-700 bg-slate-900/70 text-center text-3xl text-slate-100 focus:border-cyan-400 focus:outline-none"
+            />
+            <div className="flex min-w-[240px] flex-col gap-2">
+              <input
+                value={state.name ?? ''}
+                onChange={(event) => handleMetaChange({ name: event.target.value })}
+                placeholder={t.namePlaceholder}
+                className="w-full rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-lg font-semibold text-slate-100 focus:border-cyan-400 focus:outline-none"
+              />
+              <input
+                value={state.description ?? ''}
+                onChange={(event) => handleMetaChange({ description: event.target.value })}
+                placeholder={t.descriptionPlaceholder}
+                className="w-full rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2 text-sm text-slate-300 focus:border-cyan-400 focus:outline-none"
+              />
             </div>
           </div>
           <div className="flex flex-1 flex-wrap items-center justify-end gap-3">
+            <button
+              onClick={handleCreateNewWorkspace}
+              className="flex items-center gap-2 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-200 transition hover:-translate-y-0.5 hover:bg-emerald-500/20 active:scale-95"
+            >
+              <PlusCircleIcon className="h-4 w-4" /> {t.newWorkspace}
+            </button>
             <label className="flex items-center gap-2 text-sm text-slate-300">
               <span>{t.preset}</span>
               <select
                 className="rounded-md border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm"
                 value={presetId}
-                onChange={(event) => setPresetId(event.target.value)}
+                onChange={(event) => applyPreset(event.target.value)}
               >
                 {presetLibrary.map((preset) => (
                   <option key={preset.id} value={preset.id}>

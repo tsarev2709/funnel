@@ -27,6 +27,29 @@ const createSalesOnlyScenario = (overrides = {}) => ({
 
 export const presets = [
   {
+    id: 'custom',
+    name: 'Своя карточка',
+    locale: 'ru',
+    logo: '🆕',
+    description:
+      'Пустой шаблон: добавьте компанию, продукт и этапы воронки с нуля.',
+    zones: defaultZones,
+    finances: { avgCheck: 0, cpl: 0, cac: 0, ltv: 0 },
+    trafficChannels: [],
+    stages: [],
+    scenarios: [
+      {
+        id: 'base',
+        name: 'Base',
+        description: 'Стартовый сценарий для своей компании.',
+        adjustments: {},
+        plays: [],
+      },
+    ],
+    levers: [],
+    stakeholders: [],
+  },
+  {
     id: 'b2b-saas',
     name: 'B2B SaaS · AARRR',
     locale: 'ru',
@@ -154,6 +177,11 @@ export const presets = [
         tasks: [
           { id: 'awareness-1', text: 'Провести рекламный вебинар по кейсам клиентов', done: false },
         ],
+        trafficChannels: [
+          { id: 'awareness-seo', name: 'Контент + SEO', share: 38, note: 'Лонгриды, партнерские гайды, guest-посты.' },
+          { id: 'awareness-paid', name: 'Paid Social', share: 34, note: 'LinkedIn, Facebook, ретаргет.' },
+          { id: 'awareness-events', name: 'Комьюнити и ивенты', share: 28, note: 'Встречи клиентов, product meetup, AMA.' },
+        ],
       },
       {
         id: 'acquisition',
@@ -166,6 +194,11 @@ export const presets = [
         note: note('Основные источники: контент-маркетинг, ретаргетинг.'),
         tasks: [
           { id: 'acq-1', text: 'Обновить лид-магниты и триггерные письма', done: false },
+        ],
+        trafficChannels: [
+          { id: 'acquisition-product', name: 'Product tours', share: 42, note: 'Интерактивный product tour на сайте.' },
+          { id: 'acquisition-ads', name: 'Performance', share: 35, note: 'Paid search, intent кампании.' },
+          { id: 'acquisition-affiliates', name: 'Партнёры', share: 23, note: 'Joint вебинары и кросс-рассылки.' },
         ],
       },
       {
@@ -180,6 +213,11 @@ export const presets = [
         tasks: [
           { id: 'act-1', text: 'Добавить product tour в мобильном приложении', done: true },
         ],
+        trafficChannels: [
+          { id: 'activation-onboarding', name: 'Онбординг-автоцепочки', share: 55, note: 'Trigger email + in-app тултип.' },
+          { id: 'activation-csm', name: 'CSM calls', share: 28, note: 'Онбординг-звонки на 14 и 28 день.' },
+          { id: 'activation-academy', name: 'Customer academy', share: 17, note: 'Видеоуроки и воркшопы.' },
+        ],
       },
       {
         id: 'revenue',
@@ -192,6 +230,11 @@ export const presets = [
         note: note('Основной план: годовые подписки через менеджеров.'),
         tasks: [
           { id: 'rev-1', text: 'Настроить e-mail цепочку с кейсами ROI', done: false },
+        ],
+        trafficChannels: [
+          { id: 'revenue-sdr', name: 'SDR', share: 46, note: 'Дожим демо и discovery calls.' },
+          { id: 'revenue-upsell', name: 'Upsell nurture', share: 33, note: 'Продуктовые цепочки и ROI кейсы.' },
+          { id: 'revenue-partners', name: 'Партнёрские сделки', share: 21, note: 'GSIs и консалтинговые партнёры.' },
         ],
       },
       {
@@ -206,6 +249,11 @@ export const presets = [
         tasks: [
           { id: 'ref-1', text: 'Запустить бонусные кредиты за отзывы', done: false },
         ],
+        trafficChannels: [
+          { id: 'referral-advocacy', name: 'Advocacy club', share: 48, note: 'Кейсы и рекомендации от power users.' },
+          { id: 'referral-rewards', name: 'Referral rewards', share: 32, note: 'Бонусные кредиты и подарки.' },
+          { id: 'referral-community', name: 'Community', share: 20, note: 'AMA, Slack, закрытые митапы.' },
+        ],
       },
       {
         id: 'expansion',
@@ -218,6 +266,11 @@ export const presets = [
         note: note('QBR, продуктовая карта, консультации по внедрению новых модулей.'),
         tasks: [
           { id: 'exp-1', text: 'Внедрить ежеквартальные value-review сессии', done: false },
+        ],
+        trafficChannels: [
+          { id: 'expansion-qbr', name: 'QBR', share: 44, note: 'Value review и roadmap alignment.' },
+          { id: 'expansion-customer-marketing', name: 'Customer marketing', share: 31, note: 'ABM письма и ROI-кейсы.' },
+          { id: 'expansion-partners', name: 'Success partners', share: 25, note: 'Партнёры по внедрению.' },
         ],
       },
     ],
