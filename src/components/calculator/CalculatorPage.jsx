@@ -2,6 +2,20 @@ import { useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 import { jsPDF } from 'jspdf';
 import { formatOptions, productTypes, serviceOptions, speedOptions } from '../../data/calculatorConfig.js';
+import { ROBOTO_REGULAR_BASE64 } from './robotoRegularBase64.js';
+
+function useRobotoFont(doc) {
+  try {
+    doc.addFileToVFS('Roboto-Regular.ttf', ROBOTO_REGULAR_BASE64);
+    doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+    doc.setFont('Roboto', 'normal');
+    return true;
+  } catch (error) {
+    console.error('Failed to register Roboto font for jsPDF', error);
+    doc.setFont('helvetica', 'normal');
+    return false;
+  }
+}
 
 const productMap = new Map(productTypes.map((item) => [item.id, item]));
 const formatMap = new Map(formatOptions.map((item) => [item.id, item]));
@@ -309,14 +323,19 @@ function CalculatorPage() {
     URL.revokeObjectURL(link.href);
   };
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     const doc = new jsPDF();
+    const fontLoaded = useRobotoFont(doc);
+
     let y = 20;
 
     doc.setFontSize(16);
     doc.text('Коммерческое предложение — Anix', 14, y);
     y += 10;
 
+    if (!fontLoaded) {
+      doc.setFont('helvetica', 'normal');
+    }
     doc.setFontSize(12);
     doc.text(`Продукт: ${summary.product.label}`, 14, y);
     y += 6;
