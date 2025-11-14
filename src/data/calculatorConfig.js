@@ -14,6 +14,15 @@ export const productTypes = [
     defaultDurationSeconds: 60,
     defaultCreativeCount: 1,
     baseSavings: { time: 10, budget: 6, risk: 8, hours: 18, money: 120000 },
+    funnelImpact: {
+      avgCheckBoost: 4,
+      stageConversions: {
+        leads: 0.8,
+        qualified: 1.5,
+        proposal: 1,
+        deals: 0.6,
+      },
+    },
   },
   {
     id: 'multi',
@@ -31,6 +40,13 @@ export const productTypes = [
     defaultCreativeCount: 3,
     supportsCreatives: true,
     baseSavings: { time: 8, budget: 7, risk: 6, hours: 14, money: 95000 },
+    funnelImpact: {
+      trafficBoost: 12,
+      stageConversions: {
+        leads: 1.4,
+        qualified: 0.9,
+      },
+    },
   },
   {
     id: 'academy',
@@ -48,6 +64,15 @@ export const productTypes = [
     defaultCreativeCount: 4,
     supportsCreatives: true,
     baseSavings: { time: 14, budget: 11, risk: 10, hours: 32, money: 180000 },
+    funnelImpact: {
+      avgCheckBoost: 8,
+      stageConversions: {
+        leads: 1.1,
+        qualified: 2,
+        proposal: 1.4,
+        deals: 0.9,
+      },
+    },
   },
 ];
 
@@ -110,6 +135,13 @@ export const serviceOptions = [
     timeline: 4,
     clientSavings: { time: 15, budget: 6, risk: 15, hours: 14, money: 90000 },
     roiBoost: 12,
+    funnelImpact: {
+      trafficBoost: 8,
+      stageConversions: {
+        leads: 1.6,
+        qualified: 1.2,
+      },
+    },
   },
   {
     id: 'utp',
@@ -122,6 +154,12 @@ export const serviceOptions = [
     clientSavings: { time: 12, budget: 8, risk: 10, hours: 12, money: 80000 },
     roiBoost: 10,
     defaultSelected: true,
+    funnelImpact: {
+      stageConversions: {
+        qualified: 1.8,
+        proposal: 1.2,
+      },
+    },
   },
   {
     id: 'script',
@@ -134,6 +172,12 @@ export const serviceOptions = [
     clientSavings: { time: 11, budget: 7, risk: 9, hours: 10, money: 70000 },
     roiBoost: 9,
     defaultSelected: true,
+    funnelImpact: {
+      stageConversions: {
+        qualified: 1.4,
+        proposal: 1,
+      },
+    },
   },
   {
     id: 'concept',
@@ -148,6 +192,13 @@ export const serviceOptions = [
     clientSavings: { time: 10, budget: 9, risk: 12, hours: 14, money: 90000 },
     roiBoost: 11,
     defaultSelected: true,
+    funnelImpact: {
+      avgCheckBoost: 3,
+      stageConversions: {
+        proposal: 1.4,
+        deals: 0.8,
+      },
+    },
   },
   {
     id: 'mascot',
@@ -159,6 +210,12 @@ export const serviceOptions = [
     timeline: 4,
     clientSavings: { time: 6, budget: 5, risk: 8, hours: 8, money: 60000 },
     roiBoost: 7,
+    funnelImpact: {
+      stageConversions: {
+        leads: 0.6,
+        proposal: 0.8,
+      },
+    },
   },
   {
     id: 'animation',
@@ -174,6 +231,12 @@ export const serviceOptions = [
     roiBoost: 14,
     defaultSelected: true,
     perCreative: true,
+    funnelImpact: {
+      stageConversions: {
+        proposal: 1.1,
+        deals: 1,
+      },
+    },
   },
   {
     id: 'voiceover',
@@ -191,6 +254,11 @@ export const serviceOptions = [
       { id: 'neural', label: 'Нейросеть', price: 18000 },
     ],
     defaultVoice: 'female',
+    funnelImpact: {
+      stageConversions: {
+        proposal: 0.6,
+      },
+    },
   },
   {
     id: 'focus',
@@ -202,6 +270,12 @@ export const serviceOptions = [
     timeline: 3,
     clientSavings: { time: 7, budget: 6, risk: 14, hours: 10, money: 65000 },
     roiBoost: 8,
+    funnelImpact: {
+      stageConversions: {
+        qualified: 0.8,
+        deals: 0.4,
+      },
+    },
   },
   {
     id: 'analytics',
@@ -213,6 +287,12 @@ export const serviceOptions = [
     timeline: 2,
     clientSavings: { time: 8, budget: 9, risk: 11, hours: 12, money: 72000 },
     roiBoost: 9,
+    funnelImpact: {
+      stageConversions: {
+        qualified: 0.6,
+        deals: 0.6,
+      },
+    },
   },
   {
     id: 'distribution',
@@ -224,5 +304,24 @@ export const serviceOptions = [
     timeline: 3,
     clientSavings: { time: 9, budget: 10, risk: 12, hours: 12, money: 78000 },
     roiBoost: 10,
+    funnelImpact: {
+      trafficBoost: 12,
+      stageConversions: {
+        leads: 1.2,
+        proposal: 0.9,
+      },
+    },
   },
 ];
+
+export const funnelModel = {
+  baseTraffic: 52000,
+  avgCheck: 420000,
+  stages: [
+    { id: 'traffic', label: 'Трафик и показы', baseCount: 52000 },
+    { id: 'leads', label: 'Лиды (MQL)', conversion: 3.8 },
+    { id: 'qualified', label: 'SQL / встречи', conversion: 42 },
+    { id: 'proposal', label: 'Коммерческие предложения', conversion: 64 },
+    { id: 'deals', label: 'Клиенты / сделки', conversion: 28 },
+  ],
+};
