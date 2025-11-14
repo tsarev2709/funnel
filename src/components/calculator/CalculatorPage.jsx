@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 import { jsPDF } from 'jspdf';
-import { formatOptions, productTypes, serviceOptions, speedOptions } from '../../data/calculatorConfig.js';
+import { formatOptions, funnelModel, productTypes, serviceOptions, speedOptions } from '../../data/calculatorConfig.js';
 import { ROBOTO_REGULAR_BASE64 } from './robotoRegularBase64.js';
 
 function useRobotoFont(doc) {
@@ -21,9 +21,27 @@ const productMap = new Map(productTypes.map((item) => [item.id, item]));
 const formatMap = new Map(formatOptions.map((item) => [item.id, item]));
 
 const currencyFormatter = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 });
+const numberFormatter = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 });
+const percentFormatter = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 });
 
 function formatCurrency(value) {
   return `${currencyFormatter.format(Math.round(value ?? 0))} ₽`;
+}
+
+function formatNumber(value) {
+  return numberFormatter.format(Math.round(value ?? 0));
+}
+
+function formatPercent(value) {
+  return `${percentFormatter.format(Math.max(0, value ?? 0))}%`;
+}
+
+function formatPercentDelta(value) {
+  if (!Number.isFinite(value) || value === 0) {
+    return '+0%';
+  }
+  const prefix = value > 0 ? '+' : '';
+  return `${prefix}${percentFormatter.format(value)}%`;
 }
 
 function formatDuration(seconds) {
@@ -102,6 +120,57 @@ function evaluateFormat(format, context) {
   return { cost, hours, load, timeline };
 }
 
+function calculateFunnelProjection(model, adjustments = {}) {
+  const stageBoosts = adjustments.stageConversions ?? new Map();
+  const trafficBoost = adjustments.trafficBoost ?? 0;
+  const avgCheckBoost = adjustments.avgCheckBoost ?? 0;
+  const stages = model?.stages ?? [];
+  const baseTraffic = model?.baseTraffic ?? stages[0]?.baseCount ?? 0;
+  const stageStats = [];
+
+  let baselinePrev = baseTraffic;
+  let improvedPrev = baseTraffic * (1 + trafficBoost / 100);
+
+  stages.forEach((stage, index) => {
+    const baselineCount = index === 0 ? stage.baseCount ?? baseTraffic : (baselinePrev * (stage.conversion ?? 100)) / 100;
+    const conversionBoost = stageBoosts.get(stage.id) ?? 0;
+    const baselineConversion = index === 0 ? null : stage.conversion ?? 100;
+    const improvedConversion = index === 0 ? null : Math.max(1, (stage.conversion ?? 100) + conversionBoost);
+    const improvedCount = index === 0 ? improvedPrev : (improvedPrev * improvedConversion) / 100;
+
+    stageStats.push({
+      id: stage.id,
+      label: stage.label,
+      baselineCount: Math.round(baselineCount),
+      improvedCount: Math.round(improvedCount),
+      baselineConversion,
+      improvedConversion: improvedConversion === null ? null : Number(improvedConversion.toFixed(1)),
+      deltaCount: Math.round(improvedCount - baselineCount),
+      deltaConversion: baselineConversion === null || improvedConversion === null ? null : Number((improvedConversion - baselineConversion).toFixed(1)),
+    });
+
+    baselinePrev = baselineCount;
+    improvedPrev = improvedCount;
+  });
+
+  const lastStage = stageStats[stageStats.length - 1];
+  const baseDeals = lastStage?.baselineCount ?? 0;
+  const improvedDeals = lastStage?.improvedCount ?? 0;
+  const baseRevenue = baseDeals * (model?.avgCheck ?? 0);
+  const improvedRevenue = improvedDeals * (model?.avgCheck ?? 0) * (1 + avgCheckBoost / 100);
+
+  return {
+    stages: stageStats,
+    baseDeals: Math.round(baseDeals),
+    improvedDeals: Math.round(improvedDeals),
+    dealDelta: Math.round(improvedDeals - baseDeals),
+    baseRevenue: Math.round(baseRevenue),
+    improvedRevenue: Math.round(improvedRevenue),
+    revenueDelta: Math.round(improvedRevenue - baseRevenue),
+    upliftPercent: baseDeals > 0 ? Number((((improvedDeals - baseDeals) / baseDeals) * 100).toFixed(1)) : 0,
+  };
+}
+
 function CalculatorPage() {
   const initialState = useMemo(() => createInitialState(), []);
   const [productTypeId, setProductTypeId] = useState(initialState.productTypeId);
@@ -111,6 +180,7 @@ function CalculatorPage() {
   const [selectedFormats, setSelectedFormats] = useState(initialState.selectedFormats);
   const [selectedServices, setSelectedServices] = useState(initialState.selectedServices);
   const [voiceoverType, setVoiceoverType] = useState(initialState.voiceoverType);
+  const [showFunnelImpact, setShowFunnelImpact] = useState(false);
 
   useEffect(() => {
     const product = productMap.get(productTypeId);
@@ -155,6 +225,18 @@ function CalculatorPage() {
       money: product.baseSavings?.money ?? 0,
     };
 
+    let funnelTrafficBoost = product.funnelImpact?.trafficBoost ?? 0;
+    let funnelAvgCheckBoost = product.funnelImpact?.avgCheckBoost ?? 0;
+    const stageConversionBoosts = new Map();
+    const applyStageBoosts = (impacts) => {
+      if (!impacts) return;
+      Object.entries(impacts).forEach(([stageId, boost]) => {
+        if (!boost) return;
+        stageConversionBoosts.set(stageId, (stageConversionBoosts.get(stageId) ?? 0) + boost);
+      });
+    };
+    applyStageBoosts(product.funnelImpact?.stageConversions);
+
     const serviceEvaluations = new Map();
     const selectedServiceDetails = [];
     const serviceSet = new Set(selectedServices);
@@ -172,6 +254,11 @@ function CalculatorPage() {
         savings.risk += evaluation.savings.risk ?? 0;
         savings.hours += evaluation.savings.hours ?? 0;
         savings.money += evaluation.savings.money ?? 0;
+        if (service.funnelImpact) {
+          funnelTrafficBoost += service.funnelImpact.trafficBoost ?? 0;
+          funnelAvgCheckBoost += service.funnelImpact.avgCheckBoost ?? 0;
+          applyStageBoosts(service.funnelImpact.stageConversions);
+        }
         selectedServiceDetails.push({
           id: service.id,
           name: service.label,
@@ -223,6 +310,12 @@ function CalculatorPage() {
     const savedMoney = Math.max(0, Math.round(savings.money ?? 0));
 
     const savingsSummary = `≈ ${savingsTime}% времени / ${savingsBudget}% бюджета / ${savingsRisk}% рисков`;
+
+    const funnelProjection = calculateFunnelProjection(funnelModel, {
+      stageConversions: stageConversionBoosts,
+      trafficBoost: funnelTrafficBoost,
+      avgCheckBoost: funnelAvgCheckBoost,
+    });
 
     const exportPayload = {
       productType: product.id,
@@ -282,6 +375,7 @@ function CalculatorPage() {
       serviceEvaluations,
       formatEvaluations,
       exportPayload,
+      funnelProjection,
     };
   }, [productTypeId, speedId, durationSeconds, creativeCount, selectedFormats, selectedServices, voiceoverType]);
 
@@ -385,6 +479,7 @@ function CalculatorPage() {
 
   const product = summary.product;
   const durationLabel = formatDuration(durationSeconds);
+  const funnelStats = summary.funnelProjection;
 
   return (
     <div className="space-y-8 pt-6">
@@ -669,6 +764,79 @@ function CalculatorPage() {
           </div>
         </aside>
       </div>
+
+      <section className="rounded-3xl border border-slate-800 bg-slate-950/40 p-6 shadow-xl shadow-indigo-950/20">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-100">Как это влияет на воронку</h3>
+            <p className="mt-1 max-w-2xl text-sm text-slate-400">
+              Учитываем выбранный продукт, пакеты услуг и получаем прогноз по количеству лидов, встреч, КП и закрытых сделок.
+              Показываем, какую выручку добавит новая коммуникация.
+            </p>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-slate-200">
+            <input
+              type="checkbox"
+              checked={showFunnelImpact}
+              onChange={(event) => setShowFunnelImpact(event.target.checked)}
+              className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-cyan-400 focus:ring-cyan-400"
+            />
+            <span>Показать расчёт по воронке</span>
+          </label>
+        </div>
+
+        {showFunnelImpact && (
+          <div className="mt-6 space-y-6">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                <p className="text-xs uppercase tracking-wide text-slate-400">Сделки в месяц</p>
+                <p className="mt-2 text-3xl font-semibold text-slate-50">{formatNumber(funnelStats.improvedDeals)}</p>
+                <p className="text-sm text-emerald-300">
+                  {funnelStats.dealDelta >= 0 ? '+' : ''}
+                  {formatNumber(funnelStats.dealDelta)} контактов · {formatPercentDelta(funnelStats.upliftPercent)}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                <p className="text-xs uppercase tracking-wide text-slate-400">Доп. выручка</p>
+                <p className="mt-2 text-3xl font-semibold text-emerald-200">{formatCurrency(funnelStats.revenueDelta)}</p>
+                <p className="text-sm text-slate-400">Всего после внедрения: {formatCurrency(funnelStats.improvedRevenue)}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                <p className="text-xs uppercase tracking-wide text-slate-400">Базовая выручка</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-50">{formatCurrency(funnelStats.baseRevenue)}</p>
+                <p className="text-sm text-slate-400">Для сопоставления с текущими цифрами</p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {funnelStats.stages.map((stage) => (
+                <div key={stage.id} className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{stage.label}</p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-50">{formatNumber(stage.improvedCount)}</p>
+                  <p className="text-xs text-slate-400">
+                    Было {formatNumber(stage.baselineCount)}
+                    {stage.baselineConversion != null ? ` · ${formatPercent(stage.baselineConversion)}` : ''}
+                  </p>
+                  {stage.improvedConversion != null && (
+                    <p className="text-xs text-emerald-300">
+                      Стало {formatPercent(stage.improvedConversion)} ({formatPercentDelta(stage.deltaConversion ?? 0)})
+                    </p>
+                  )}
+                  <p
+                    className={clsx(
+                      'mt-2 text-sm font-medium',
+                      stage.deltaCount >= 0 ? 'text-emerald-300' : 'text-rose-300',
+                    )}
+                  >
+                    {stage.deltaCount >= 0 ? '+' : ''}
+                    {formatNumber(stage.deltaCount)} контактов
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
