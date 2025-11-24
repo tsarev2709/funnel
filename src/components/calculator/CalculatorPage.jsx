@@ -211,8 +211,6 @@ function CalculatorPage() {
       timelineDays += Math.max(0, creativeMultiplier - 1) * 1.5;
     }
 
-    let teamHours = (product.baseTeamHours ?? 0) + durationMinutes * (product.teamHoursPerMinute ?? 0);
-    teamHours *= creativeMultiplier;
     let teamLoad = product.baseTeamLoad ?? 0;
 
     let servicesCost = 0;
@@ -252,7 +250,6 @@ function CalculatorPage() {
       serviceEvaluations.set(service.id, evaluation);
       if (serviceSet.has(service.id)) {
         servicesCost += evaluation.cost;
-        teamHours += evaluation.hours;
         teamLoad += evaluation.load;
         timelineDays += evaluation.timeline;
         roiBoost += evaluation.roiBoost;
@@ -272,7 +269,6 @@ function CalculatorPage() {
           description: service.description,
           cost: Math.round(evaluation.cost),
           teamLoad: Math.round(evaluation.load),
-          teamHours: Math.round(evaluation.hours),
           timeline: Math.round(evaluation.timeline),
           voice: evaluation.voiceLabel,
         });
@@ -317,7 +313,6 @@ function CalculatorPage() {
       formatEvaluations.set(format.id, evaluation);
       if (formatSet.has(format.id)) {
         formatsCost += evaluation.cost;
-        teamHours += evaluation.hours;
         teamLoad += evaluation.load;
         timelineDays += evaluation.timeline;
         selectedFormatDetails.push({
@@ -334,10 +329,13 @@ function CalculatorPage() {
     const priceMultiplier = speed?.priceMultiplier ?? 1;
     const timeMultiplier = speed?.timeMultiplier ?? 1;
 
+    const baseCostWithSpeed = Math.round(baseCost * priceMultiplier);
+    const servicesCostWithSpeed = Math.round(servicesCost * priceMultiplier);
+    const formatsCostWithSpeed = Math.round(formatsCost * priceMultiplier);
+
     const subtotal = baseCost + servicesCost + formatsCost;
-    const totalCost = Math.round(subtotal * priceMultiplier);
+    const totalCost = baseCostWithSpeed + servicesCostWithSpeed + formatsCostWithSpeed;
     const timelineResult = Math.max(5, Math.round(timelineDays * timeMultiplier));
-    const teamHoursResult = Math.round(teamHours);
     const teamLoadPercent = Math.min(100, Math.round(teamLoad));
 
     const roiReference = roiBaseline + roiBoost * 14000 * creativeMultiplier + (savings.money ?? 0) * 0.25;
@@ -374,7 +372,6 @@ function CalculatorPage() {
         cost: service.cost,
         voice: service.voice ?? undefined,
         teamLoad: service.teamLoad,
-        teamHours: service.teamHours,
         timelineDays: service.timeline,
         iterations: service.iterations,
         includedIterations: service.included,
@@ -382,13 +379,17 @@ function CalculatorPage() {
       totals: {
         cost: totalCost,
         timelineDays: timelineResult,
-        teamHours: teamHoursResult,
         teamLoadPercent,
         roiPercent: roi,
         savings: {
           summary: savingsSummary,
           savedHours,
           savedMoney,
+        },
+        breakdown: {
+          base: baseCostWithSpeed,
+          services: servicesCostWithSpeed,
+          formats: formatsCostWithSpeed,
         },
       },
       note: `Сэкономите ≈ ${savedHours} часов и ${formatCurrency(savedMoney)} в месяц.`,
@@ -402,10 +403,15 @@ function CalculatorPage() {
       subtotal,
       servicesCost,
       formatsCost,
+      costBreakdown: {
+        base: baseCostWithSpeed,
+        services: servicesCostWithSpeed,
+        formats: formatsCostWithSpeed,
+        priceMultiplier,
+      },
       totals: {
         totalCost,
         timelineDays: timelineResult,
-        teamHours: teamHoursResult,
         teamLoadPercent,
         roi,
         savingsSummary,
@@ -498,7 +504,7 @@ function CalculatorPage() {
     y += 6;
     doc.text(`Срок производства: ${summary.totals.timelineDays} дней`, 14, y);
     y += 6;
-    doc.text(`Загрузка команды: ${summary.totals.teamLoadPercent}% / ${summary.totals.teamHours} ч.`, 14, y);
+    doc.text(`Загрузка команды: ${summary.totals.teamLoadPercent}%`, 14, y);
     y += 8;
 
     doc.text('Выбранные услуги:', 14, y);
@@ -570,7 +576,7 @@ function CalculatorPage() {
               Срок производства: <span className="font-semibold">{summary.totals.timelineDays} дн.</span>
             </p>
             <p className="mt-1 text-sm text-cyan-100">
-              Загрузка команды: <span className="font-semibold">{summary.totals.teamLoadPercent}% · {summary.totals.teamHours} ч.</span>
+              Загрузка команды: <span className="font-semibold">{summary.totals.teamLoadPercent}%</span>
             </p>
           </div>
         </div>
@@ -802,9 +808,7 @@ function CalculatorPage() {
               </div>
               <div className="flex items-baseline justify-between gap-4">
                 <dt className="text-slate-300">👥 Загрузка команды</dt>
-                <dd className="text-base font-medium text-slate-100">
-                  {summary.totals.teamLoadPercent}% · {summary.totals.teamHours} ч.
-                </dd>
+                <dd className="text-base font-medium text-slate-100">{summary.totals.teamLoadPercent}%</dd>
               </div>
               <div className="flex items-baseline justify-between gap-4">
                 <dt className="text-slate-300">🧠 Экономия клиента</dt>
@@ -815,6 +819,30 @@ function CalculatorPage() {
                 <dd className="text-base font-medium text-indigo-200">{summary.totals.roi}%</dd>
               </div>
             </dl>
+            <div className="mt-5 space-y-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Состав стоимости</p>
+              <dl className="space-y-2 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-slate-300">Базовый пакет</dt>
+                  <dd className="font-medium text-slate-50">{formatCurrency(summary.costBreakdown.base)}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-slate-300">Выбранные услуги</dt>
+                  <dd className="font-medium text-slate-50">{formatCurrency(summary.costBreakdown.services)}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-slate-300">Форматы и адаптации</dt>
+                  <dd className="font-medium text-slate-50">{formatCurrency(summary.costBreakdown.formats)}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-3 border-t border-slate-800 pt-2 text-slate-200">
+                  <dt>Итого</dt>
+                  <dd className="text-base font-semibold text-slate-50">{formatCurrency(summary.totals.totalCost)}</dd>
+                </div>
+              </dl>
+              {summary.costBreakdown.priceMultiplier !== 1 && (
+                <p className="text-xs text-slate-500">Учтён множитель скорости ×{summary.costBreakdown.priceMultiplier}.</p>
+              )}
+            </div>
             <p className="mt-4 text-sm text-slate-400">{summary.exportPayload.note}</p>
             <button
               onClick={handleDownloadPdf}

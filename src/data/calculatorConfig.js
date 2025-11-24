@@ -147,7 +147,7 @@ export const serviceOptions = [
     id: 'utp',
     label: '💡 Проработка УТП, сценария и ТЗ',
     description: 'Формируем ключевой месседж, сценарную основу и техническое задание.',
-    price: 24000,
+    price: 50000,
     teamLoad: 7,
     teamHours: 22,
     timeline: 3,
