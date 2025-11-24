@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 import { jsPDF } from 'jspdf';
+import { Link } from 'react-router-dom';
 import { formatOptions, funnelModel, productTypes, serviceOptions, speedOptions } from '../../data/calculatorConfig.js';
 import { ROBOTO_REGULAR_BASE64 } from './robotoRegularBase64.js';
 
@@ -69,6 +70,7 @@ function createInitialState() {
     selectedServices: serviceOptions.filter((item) => item.defaultSelected).map((item) => item.id),
     voiceoverType:
       voiceoverService?.defaultVoice ?? voiceoverService?.voiceOptions?.[0]?.id ?? 'female',
+    revisionIterations: 2,
   };
 }
 
@@ -180,6 +182,7 @@ function CalculatorPage() {
   const [selectedFormats, setSelectedFormats] = useState(initialState.selectedFormats);
   const [selectedServices, setSelectedServices] = useState(initialState.selectedServices);
   const [voiceoverType, setVoiceoverType] = useState(initialState.voiceoverType);
+  const [revisionIterations, setRevisionIterations] = useState(initialState.revisionIterations);
   const [showFunnelImpact, setShowFunnelImpact] = useState(false);
 
   useEffect(() => {
@@ -240,7 +243,11 @@ function CalculatorPage() {
     const serviceEvaluations = new Map();
     const selectedServiceDetails = [];
     const serviceSet = new Set(selectedServices);
+    const iterationService = serviceOptions.find((service) => service.id === 'iterations');
+
     serviceOptions.forEach((service) => {
+      if (service.id === 'iterations') return;
+
       const evaluation = evaluateService(service, { durationMinutes, creativeMultiplier, voiceoverType });
       serviceEvaluations.set(service.id, evaluation);
       if (serviceSet.has(service.id)) {
@@ -272,6 +279,36 @@ function CalculatorPage() {
       }
     });
 
+    const animationEvaluation = serviceEvaluations.get('animation');
+    const animationSelected = serviceSet.has('animation');
+    const includedIterations = iterationService?.included ?? 0;
+    const extraIterations = Math.max(0, revisionIterations - includedIterations);
+    const iterationCost = (animationSelected ? (animationEvaluation?.cost ?? 0) : 0) *
+      (iterationService?.percentPerExtra ?? 0) *
+      extraIterations;
+    if (iterationService) {
+      const evaluation = {
+        cost: iterationCost,
+        hours: 0,
+        load: 0,
+        timeline: 0,
+        iterations: revisionIterations,
+        extraIterations,
+        savings: {},
+        roiBoost: 0,
+      };
+      serviceEvaluations.set(iterationService.id, evaluation);
+      servicesCost += evaluation.cost;
+      selectedServiceDetails.push({
+        id: iterationService.id,
+        name: iterationService.label,
+        description: iterationService.description,
+        cost: Math.round(evaluation.cost),
+        iterations: revisionIterations,
+        included: includedIterations,
+      });
+    }
+
     const formatEvaluations = new Map();
     const selectedFormatDetails = [];
     const formatSet = new Set(selectedFormats);
@@ -290,6 +327,9 @@ function CalculatorPage() {
         });
       }
     });
+
+    const formatSurcharge = selectedFormats.length >= 2 ? selectedFormats.length * 2000 : 0;
+    formatsCost += formatSurcharge;
 
     const priceMultiplier = speed?.priceMultiplier ?? 1;
     const timeMultiplier = speed?.timeMultiplier ?? 1;
@@ -336,6 +376,8 @@ function CalculatorPage() {
         teamLoad: service.teamLoad,
         teamHours: service.teamHours,
         timelineDays: service.timeline,
+        iterations: service.iterations,
+        includedIterations: service.included,
       })),
       totals: {
         cost: totalCost,
@@ -377,7 +419,16 @@ function CalculatorPage() {
       exportPayload,
       funnelProjection,
     };
-  }, [productTypeId, speedId, durationSeconds, creativeCount, selectedFormats, selectedServices, voiceoverType]);
+  }, [
+    productTypeId,
+    speedId,
+    durationSeconds,
+    creativeCount,
+    selectedFormats,
+    selectedServices,
+    voiceoverType,
+    revisionIterations,
+  ]);
 
   const handleToggleFormat = (formatId) => {
     setSelectedFormats((prev) => {
@@ -389,6 +440,7 @@ function CalculatorPage() {
   };
 
   const handleToggleService = (serviceId) => {
+    if (serviceId === 'iterations') return;
     setSelectedServices((prev) => {
       if (prev.includes(serviceId)) {
         return prev.filter((id) => id !== serviceId);
@@ -406,6 +458,7 @@ function CalculatorPage() {
     setSelectedFormats(defaults.selectedFormats);
     setSelectedServices(defaults.selectedServices);
     setVoiceoverType(defaults.voiceoverType);
+    setRevisionIterations(defaults.revisionIterations);
   };
 
   const handleExportJson = () => {
@@ -609,6 +662,9 @@ function CalculatorPage() {
 
               <div>
                 <span className="text-sm text-slate-300">Разрешения и форматы</span>
+                <p className="mt-1 text-xs text-slate-400">
+                  Форматы бесплатны; при выборе двух и более добавляется по 2 000 ₽ за каждый вариант.
+                </p>
                 <div className="mt-3 grid gap-2 md:grid-cols-2">
                   {formatOptions.map((format) => {
                     const checked = selectedFormats.includes(format.id);
@@ -648,51 +704,83 @@ function CalculatorPage() {
             <h2 className="text-lg font-semibold text-slate-100">Этапы и услуги</h2>
             <div className="mt-4 space-y-4">
               {serviceOptions.map((service) => {
-                const checked = selectedServices.includes(service.id);
+                const isIterations = service.id === 'iterations';
+                const checked = isIterations ? true : selectedServices.includes(service.id);
                 const evaluation = summary.serviceEvaluations.get(service.id);
+                const includedIterations = service.included ?? 0;
+                const extraIterations = isIterations ? Math.max(0, revisionIterations - includedIterations) : 0;
                 return (
                   <div
                     key={service.id}
                     className={clsx(
                       'rounded-2xl border p-4 transition',
-                      checked
+                      checked || isIterations
                         ? 'border-cyan-500/50 bg-cyan-500/10'
                         : 'border-slate-700 bg-slate-900/40 hover:border-cyan-500/40',
                     )}
                   >
-                    <label className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => handleToggleService(service.id)}
-                        className="mt-1 h-4 w-4 rounded border-slate-600 bg-slate-900 text-cyan-400 focus:ring-cyan-400"
-                      />
-                      <div className="space-y-2">
+                    {isIterations ? (
+                      <div className="space-y-3">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-medium text-slate-100">{service.label}</span>
                           <span className="text-xs text-cyan-200">
-                            ≈ {formatCurrency(evaluation?.cost ?? service.price ?? 0)}
+                            Доп. итерации: {extraIterations} · {formatCurrency(evaluation?.cost ?? 0)}
                           </span>
                         </div>
                         <p className="text-sm text-slate-300">{service.description}</p>
-                        <p className="text-xs text-slate-400">
-                          Загрузка +{service.teamLoad}% · {service.timeline} дн. · Экономия до {service.clientSavings?.time ?? 0}% времени
-                        </p>
-                        {service.voiceOptions?.length && checked && (
-                          <select
-                            value={voiceoverType}
-                            onChange={(event) => setVoiceoverType(event.target.value)}
-                            className="mt-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-100"
-                          >
-                            {service.voiceOptions.map((option) => (
-                              <option key={option.id} value={option.id}>
-                                {option.label} — {formatCurrency(option.price)}
-                              </option>
-                            ))}
-                          </select>
-                        )}
+                        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-200">
+                          <label className="flex items-center gap-2">
+                            <span>Всего итераций:</span>
+                            <input
+                              type="number"
+                              min={includedIterations}
+                              value={revisionIterations}
+                              onChange={(event) =>
+                                setRevisionIterations(
+                                  Math.max(includedIterations, Number(event.target.value) || includedIterations),
+                                )
+                              }
+                              className="w-20 rounded-lg border border-slate-700 bg-slate-900/60 px-2 py-1 text-sm text-slate-100"
+                            />
+                          </label>
+                          <span className="text-xs text-slate-400">Включено {includedIterations} без доплаты</span>
+                        </div>
                       </div>
-                    </label>
+                    ) : (
+                      <label className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => handleToggleService(service.id)}
+                          className="mt-1 h-4 w-4 rounded border-slate-600 bg-slate-900 text-cyan-400 focus:ring-cyan-400"
+                        />
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-medium text-slate-100">{service.label}</span>
+                            <span className="text-xs text-cyan-200">
+                              ≈ {formatCurrency(evaluation?.cost ?? service.price ?? 0)}
+                            </span>
+                          </div>
+                          <p className="text-sm text-slate-300">{service.description}</p>
+                          <p className="text-xs text-slate-400">
+                            Загрузка +{service.teamLoad}% · {service.timeline} дн. · Экономия до {service.clientSavings?.time ?? 0}% времени
+                          </p>
+                          {service.voiceOptions?.length && checked && (
+                            <select
+                              value={voiceoverType}
+                              onChange={(event) => setVoiceoverType(event.target.value)}
+                              className="mt-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-100"
+                            >
+                              {service.voiceOptions.map((option) => (
+                                <option key={option.id} value={option.id}>
+                                  {option.label} — {formatCurrency(option.price)}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                      </label>
+                    )}
                   </div>
                 );
               })}
@@ -774,15 +862,23 @@ function CalculatorPage() {
               Показываем, какую выручку добавит новая коммуникация.
             </p>
           </div>
-          <label className="flex items-center gap-2 text-sm text-slate-200">
-            <input
-              type="checkbox"
-              checked={showFunnelImpact}
-              onChange={(event) => setShowFunnelImpact(event.target.checked)}
-              className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-cyan-400 focus:ring-cyan-400"
-            />
-            <span>Показать расчёт по воронке</span>
-          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              to="/"
+              className="rounded-full border border-amber-400/50 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-100 transition hover:bg-amber-500/20"
+            >
+              Редактировать воронку
+            </Link>
+            <label className="flex items-center gap-2 text-sm text-slate-200">
+              <input
+                type="checkbox"
+                checked={showFunnelImpact}
+                onChange={(event) => setShowFunnelImpact(event.target.checked)}
+                className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-cyan-400 focus:ring-cyan-400"
+              />
+              <span>Показать расчёт по воронке</span>
+            </label>
+          </div>
         </div>
 
         {showFunnelImpact && (
