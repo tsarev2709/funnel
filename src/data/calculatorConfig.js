@@ -4,7 +4,7 @@ export const productTypes = [
     label: 'Один обучающий ролик (1–5 мин)',
     description: 'Глубокий обучающий ролик для внутренних команд или клиентов.',
     basePrice: 0,
-    pricePerMinute: 174960,
+    pricePerMinute: 175000,
     baseTimeline: 18,
     timelinePerMinute: 0.8,
     baseTeamHours: 120,

@@ -67,7 +67,7 @@ function createInitialState() {
     speedId: speedOptions[0]?.id ?? 'normal',
     creativeCount: baseProduct?.supportsCreatives ? baseProduct.defaultCreativeCount ?? 1 : 1,
     selectedFormats: formatOptions.filter((item) => item.defaultSelected).map((item) => item.id),
-    selectedServices: serviceOptions.filter((item) => item.defaultSelected).map((item) => item.id),
+    selectedServices: [],
     voiceoverType:
       voiceoverService?.defaultVoice ?? voiceoverService?.voiceOptions?.[0]?.id ?? 'female',
     revisionIterations: 2,
