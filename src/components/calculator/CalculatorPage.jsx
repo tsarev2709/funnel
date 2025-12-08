@@ -259,13 +259,10 @@ export function calculateSummary({
     }
   });
 
-  const animationEvaluation = serviceEvaluations.get('animation');
-  const animationSelected = serviceSet.has('animation');
   const includedIterations = iterationService?.included ?? 0;
   const extraIterations = Math.max(0, revisionIterations - includedIterations);
-  const iterationCost = (animationSelected ? (animationEvaluation?.cost ?? 0) : 0) *
-    (iterationService?.percentPerExtra ?? 0) *
-    extraIterations;
+  const iterationBaseCost = serviceEvaluations.get('animation')?.cost ?? baseCost;
+  const iterationCost = iterationBaseCost * (iterationService?.percentPerExtra ?? 0) * extraIterations;
   if (iterationService) {
     const evaluation = {
       cost: iterationCost,
@@ -643,6 +640,10 @@ function CalculatorPage() {
                   onChange={(event) => setDurationSeconds(Number(event.target.value))}
                   className="mt-3 h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-700 accent-cyan-400"
                 />
+                <p className="mt-2 text-xs text-slate-400">
+                  В стоимость входят услуги полного цикла: композитинг, финальная сборка, анимация, монтаж,
+                  создание раскадровки и другие этапы производства.
+                </p>
               </div>
 
               <div>
@@ -668,7 +669,7 @@ function CalculatorPage() {
               {product.supportsCreatives && (
                 <div>
                   <label className="flex items-center justify-between text-sm text-slate-300">
-                    <span>Количество креативов</span>
+                    <span>Указать количество креативов</span>
                     <input
                       type="number"
                       min={1}
@@ -823,22 +824,6 @@ function CalculatorPage() {
               <div className="flex items-baseline justify-between gap-4">
                 <dt className="text-slate-300">💰 Итоговая стоимость</dt>
                 <dd className="text-xl font-semibold text-slate-50">{formatCurrency(summary.totals.totalCost)}</dd>
-              </div>
-              <div className="flex items-baseline justify-between gap-4">
-                <dt className="text-slate-300">⏱️ Срок производства</dt>
-                <dd className="text-base font-medium text-slate-100">{summary.totals.timelineDays} дней</dd>
-              </div>
-              <div className="flex items-baseline justify-between gap-4">
-                <dt className="text-slate-300">👥 Загрузка команды</dt>
-                <dd className="text-base font-medium text-slate-100">{summary.totals.teamLoadPercent}%</dd>
-              </div>
-              <div className="flex items-baseline justify-between gap-4">
-                <dt className="text-slate-300">🧠 Экономия клиента</dt>
-                <dd className="text-base font-medium text-emerald-200">{summary.totals.savingsSummary}</dd>
-              </div>
-              <div className="flex items-baseline justify-between gap-4">
-                <dt className="text-slate-300">📊 Окупаемость (ROI)</dt>
-                <dd className="text-base font-medium text-indigo-200">{summary.totals.roi}%</dd>
               </div>
             </dl>
             <div className="mt-5 space-y-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
