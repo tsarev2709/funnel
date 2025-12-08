@@ -58,7 +58,7 @@ function formatDuration(seconds) {
   return `${minutes} мин ${secs} сек`;
 }
 
-function createInitialState() {
+export function createInitialState() {
   const baseProduct = productTypes[0];
   const voiceoverService = serviceOptions.find((service) => service.id === 'voiceover');
   return {
@@ -173,6 +173,244 @@ function calculateFunnelProjection(model, adjustments = {}) {
   };
 }
 
+export function calculateSummary({
+  productTypeId,
+  speedId,
+  durationSeconds,
+  creativeCount,
+  selectedFormats,
+  selectedServices,
+  voiceoverType,
+  revisionIterations,
+}) {
+  const product = productMap.get(productTypeId) ?? productTypes[0];
+  const speed = speedOptions.find((option) => option.id === speedId) ?? speedOptions[0];
+  const creativeMultiplier = product.supportsCreatives ? Math.max(creativeCount, 1) : 1;
+  const durationMinutes = Math.max(0, durationSeconds) / 60;
+  let baseCost = (product.basePrice ?? 0) + durationMinutes * (product.pricePerMinute ?? 0);
+  baseCost *= creativeMultiplier;
+
+  let timelineDays = (product.baseTimeline ?? 0) + durationMinutes * (product.timelinePerMinute ?? 0);
+  if (product.supportsCreatives) {
+    timelineDays += Math.max(0, creativeMultiplier - 1) * 1.5;
+  }
+
+  let teamLoad = product.baseTeamLoad ?? 0;
+
+  let servicesCost = 0;
+  let formatsCost = 0;
+  let roiBaseline = (product.expectedImpact ?? 0) * creativeMultiplier;
+  let roiBoost = 0;
+
+  const savings = {
+    time: product.baseSavings?.time ?? 0,
+    budget: product.baseSavings?.budget ?? 0,
+    risk: product.baseSavings?.risk ?? 0,
+    hours: product.baseSavings?.hours ?? 0,
+    money: product.baseSavings?.money ?? 0,
+  };
+
+  let funnelTrafficBoost = product.funnelImpact?.trafficBoost ?? 0;
+  let funnelAvgCheckBoost = product.funnelImpact?.avgCheckBoost ?? 0;
+  const stageConversionBoosts = new Map();
+  const applyStageBoosts = (impacts) => {
+    if (!impacts) return;
+    Object.entries(impacts).forEach(([stageId, boost]) => {
+      if (!boost) return;
+      stageConversionBoosts.set(stageId, (stageConversionBoosts.get(stageId) ?? 0) + boost);
+    });
+  };
+  applyStageBoosts(product.funnelImpact?.stageConversions);
+
+  const serviceEvaluations = new Map();
+  const selectedServiceDetails = [];
+  const serviceSet = new Set(selectedServices);
+  const iterationService = serviceOptions.find((service) => service.id === 'iterations');
+
+  serviceOptions.forEach((service) => {
+    if (service.id === 'iterations') return;
+
+    const evaluation = evaluateService(service, { durationMinutes, creativeMultiplier, voiceoverType });
+    serviceEvaluations.set(service.id, evaluation);
+    if (serviceSet.has(service.id)) {
+      servicesCost += evaluation.cost;
+      teamLoad += evaluation.load;
+      timelineDays += evaluation.timeline;
+      roiBoost += evaluation.roiBoost;
+      savings.time += evaluation.savings.time ?? 0;
+      savings.budget += evaluation.savings.budget ?? 0;
+      savings.risk += evaluation.savings.risk ?? 0;
+      savings.hours += evaluation.savings.hours ?? 0;
+      savings.money += evaluation.savings.money ?? 0;
+      if (service.funnelImpact) {
+        funnelTrafficBoost += service.funnelImpact.trafficBoost ?? 0;
+        funnelAvgCheckBoost += service.funnelImpact.avgCheckBoost ?? 0;
+        applyStageBoosts(service.funnelImpact.stageConversions);
+      }
+      selectedServiceDetails.push({
+        id: service.id,
+        name: service.label,
+        description: service.description,
+        cost: Math.round(evaluation.cost),
+        teamLoad: Math.round(evaluation.load),
+        timeline: Math.round(evaluation.timeline),
+        voice: evaluation.voiceLabel,
+      });
+    }
+  });
+
+  const animationEvaluation = serviceEvaluations.get('animation');
+  const animationSelected = serviceSet.has('animation');
+  const includedIterations = iterationService?.included ?? 0;
+  const extraIterations = Math.max(0, revisionIterations - includedIterations);
+  const iterationCost = (animationSelected ? (animationEvaluation?.cost ?? 0) : 0) *
+    (iterationService?.percentPerExtra ?? 0) *
+    extraIterations;
+  if (iterationService) {
+    const evaluation = {
+      cost: iterationCost,
+      hours: 0,
+      load: 0,
+      timeline: 0,
+      iterations: revisionIterations,
+      extraIterations,
+      savings: {},
+      roiBoost: 0,
+    };
+    serviceEvaluations.set(iterationService.id, evaluation);
+    servicesCost += evaluation.cost;
+    selectedServiceDetails.push({
+      id: iterationService.id,
+      name: iterationService.label,
+      description: iterationService.description,
+      cost: Math.round(evaluation.cost),
+      iterations: revisionIterations,
+      included: includedIterations,
+    });
+  }
+
+  const formatEvaluations = new Map();
+  const selectedFormatDetails = [];
+  const formatSet = new Set(selectedFormats);
+  formatOptions.forEach((format) => {
+    const evaluation = evaluateFormat(format, { creativeMultiplier });
+    formatEvaluations.set(format.id, evaluation);
+    if (formatSet.has(format.id)) {
+      formatsCost += evaluation.cost;
+      teamLoad += evaluation.load;
+      timelineDays += evaluation.timeline;
+      selectedFormatDetails.push({
+        id: format.id,
+        name: format.label,
+        cost: Math.round(evaluation.cost),
+      });
+    }
+  });
+
+  const formatSurcharge = selectedFormats.length >= 2 ? selectedFormats.length * 2000 : 0;
+  formatsCost += formatSurcharge;
+
+  const priceMultiplier = speed?.priceMultiplier ?? 1;
+  const timeMultiplier = speed?.timeMultiplier ?? 1;
+
+  const baseCostWithSpeed = Math.round(baseCost * priceMultiplier);
+  const servicesCostWithSpeed = Math.round(servicesCost * priceMultiplier);
+  const formatsCostWithSpeed = Math.round(formatsCost * priceMultiplier);
+
+  const subtotal = baseCost + servicesCost + formatsCost;
+  const totalCost = baseCostWithSpeed + servicesCostWithSpeed + formatsCostWithSpeed;
+  const timelineResult = Math.max(5, Math.round(timelineDays * timeMultiplier));
+  const teamLoadPercent = Math.min(100, Math.round(teamLoad));
+
+  const roiReference = roiBaseline + roiBoost * 14000 * creativeMultiplier + (savings.money ?? 0) * 0.25;
+  const roi = totalCost > 0 ? Math.round(((roiReference - totalCost) / totalCost) * 100) : 0;
+
+  const savingsTime = Math.min(90, Math.round(savings.time ?? 0));
+  const savingsBudget = Math.min(90, Math.round(savings.budget ?? 0));
+  const savingsRisk = Math.min(90, Math.round(savings.risk ?? 0));
+  const savedHours = Math.max(0, Math.round(savings.hours ?? 0));
+  const savedMoney = Math.max(0, Math.round(savings.money ?? 0));
+
+  const savingsSummary = `≈ ${savingsTime}% времени / ${savingsBudget}% бюджета / ${savingsRisk}% рисков`;
+
+  const funnelProjection = calculateFunnelProjection(funnelModel, {
+    stageConversions: stageConversionBoosts,
+    trafficBoost: funnelTrafficBoost,
+    avgCheckBoost: funnelAvgCheckBoost,
+  });
+
+  const exportPayload = {
+    productType: product.id,
+    productName: product.label,
+    description: product.description,
+    parameters: {
+      durationSeconds,
+      durationFormatted: formatDuration(durationSeconds),
+      speed: speed.label,
+      creatives: product.supportsCreatives ? creativeMultiplier : undefined,
+      formats: selectedFormatDetails.map((item) => item.name),
+    },
+    services: selectedServiceDetails.map((service) => ({
+      name: service.name,
+      description: service.description,
+      cost: service.cost,
+      voice: service.voice ?? undefined,
+      teamLoad: service.teamLoad,
+      timelineDays: service.timeline,
+      iterations: service.iterations,
+      includedIterations: service.included,
+    })),
+    totals: {
+      cost: totalCost,
+      timelineDays: timelineResult,
+      teamLoadPercent,
+      roiPercent: roi,
+      savings: {
+        summary: savingsSummary,
+        savedHours,
+        savedMoney,
+      },
+      breakdown: {
+        base: baseCostWithSpeed,
+        services: servicesCostWithSpeed,
+        formats: formatsCostWithSpeed,
+      },
+    },
+    note: `Сэкономите ≈ ${savedHours} часов и ${formatCurrency(savedMoney)} в месяц.`,
+  };
+
+  return {
+    product,
+    speed,
+    creativeMultiplier,
+    durationMinutes,
+    subtotal,
+    servicesCost,
+    formatsCost,
+    costBreakdown: {
+      base: baseCostWithSpeed,
+      services: servicesCostWithSpeed,
+      formats: formatsCostWithSpeed,
+      priceMultiplier,
+    },
+    totals: {
+      totalCost,
+      timelineDays: timelineResult,
+      teamLoadPercent,
+      roi,
+      savingsSummary,
+      savedHours,
+      savedMoney,
+    },
+    selectedServiceDetails,
+    selectedFormatDetails,
+    serviceEvaluations,
+    formatEvaluations,
+    exportPayload,
+    funnelProjection,
+  };
+}
+
 function CalculatorPage() {
   const initialState = useMemo(() => createInitialState(), []);
   const [productTypeId, setProductTypeId] = useState(initialState.productTypeId);
@@ -197,238 +435,22 @@ function CalculatorPage() {
     setDurationSeconds((prev) => (prev === desiredDuration ? prev : desiredDuration));
   }, [productTypeId]);
 
-  const summary = useMemo(() => {
-    const product = productMap.get(productTypeId) ?? productTypes[0];
-    const speed = speedOptions.find((option) => option.id === speedId) ?? speedOptions[0];
-    const creativeMultiplier = product.supportsCreatives ? Math.max(creativeCount, 1) : 1;
-    const durationMinutes = Math.max(5, durationSeconds) / 60;
-
-    let baseCost = (product.basePrice ?? 0) + durationMinutes * (product.pricePerMinute ?? 0);
-    baseCost *= creativeMultiplier;
-
-    let timelineDays = (product.baseTimeline ?? 0) + durationMinutes * (product.timelinePerMinute ?? 0);
-    if (product.supportsCreatives) {
-      timelineDays += Math.max(0, creativeMultiplier - 1) * 1.5;
-    }
-
-    let teamLoad = product.baseTeamLoad ?? 0;
-
-    let servicesCost = 0;
-    let formatsCost = 0;
-    let roiBaseline = (product.expectedImpact ?? 0) * creativeMultiplier;
-    let roiBoost = 0;
-
-    const savings = {
-      time: product.baseSavings?.time ?? 0,
-      budget: product.baseSavings?.budget ?? 0,
-      risk: product.baseSavings?.risk ?? 0,
-      hours: product.baseSavings?.hours ?? 0,
-      money: product.baseSavings?.money ?? 0,
-    };
-
-    let funnelTrafficBoost = product.funnelImpact?.trafficBoost ?? 0;
-    let funnelAvgCheckBoost = product.funnelImpact?.avgCheckBoost ?? 0;
-    const stageConversionBoosts = new Map();
-    const applyStageBoosts = (impacts) => {
-      if (!impacts) return;
-      Object.entries(impacts).forEach(([stageId, boost]) => {
-        if (!boost) return;
-        stageConversionBoosts.set(stageId, (stageConversionBoosts.get(stageId) ?? 0) + boost);
-      });
-    };
-    applyStageBoosts(product.funnelImpact?.stageConversions);
-
-    const serviceEvaluations = new Map();
-    const selectedServiceDetails = [];
-    const serviceSet = new Set(selectedServices);
-    const iterationService = serviceOptions.find((service) => service.id === 'iterations');
-
-    serviceOptions.forEach((service) => {
-      if (service.id === 'iterations') return;
-
-      const evaluation = evaluateService(service, { durationMinutes, creativeMultiplier, voiceoverType });
-      serviceEvaluations.set(service.id, evaluation);
-      if (serviceSet.has(service.id)) {
-        servicesCost += evaluation.cost;
-        teamLoad += evaluation.load;
-        timelineDays += evaluation.timeline;
-        roiBoost += evaluation.roiBoost;
-        savings.time += evaluation.savings.time ?? 0;
-        savings.budget += evaluation.savings.budget ?? 0;
-        savings.risk += evaluation.savings.risk ?? 0;
-        savings.hours += evaluation.savings.hours ?? 0;
-        savings.money += evaluation.savings.money ?? 0;
-        if (service.funnelImpact) {
-          funnelTrafficBoost += service.funnelImpact.trafficBoost ?? 0;
-          funnelAvgCheckBoost += service.funnelImpact.avgCheckBoost ?? 0;
-          applyStageBoosts(service.funnelImpact.stageConversions);
-        }
-        selectedServiceDetails.push({
-          id: service.id,
-          name: service.label,
-          description: service.description,
-          cost: Math.round(evaluation.cost),
-          teamLoad: Math.round(evaluation.load),
-          timeline: Math.round(evaluation.timeline),
-          voice: evaluation.voiceLabel,
-        });
-      }
-    });
-
-    const animationEvaluation = serviceEvaluations.get('animation');
-    const animationSelected = serviceSet.has('animation');
-    const includedIterations = iterationService?.included ?? 0;
-    const extraIterations = Math.max(0, revisionIterations - includedIterations);
-    const iterationCost = (animationSelected ? (animationEvaluation?.cost ?? 0) : 0) *
-      (iterationService?.percentPerExtra ?? 0) *
-      extraIterations;
-    if (iterationService) {
-      const evaluation = {
-        cost: iterationCost,
-        hours: 0,
-        load: 0,
-        timeline: 0,
-        iterations: revisionIterations,
-        extraIterations,
-        savings: {},
-        roiBoost: 0,
-      };
-      serviceEvaluations.set(iterationService.id, evaluation);
-      servicesCost += evaluation.cost;
-      selectedServiceDetails.push({
-        id: iterationService.id,
-        name: iterationService.label,
-        description: iterationService.description,
-        cost: Math.round(evaluation.cost),
-        iterations: revisionIterations,
-        included: includedIterations,
-      });
-    }
-
-    const formatEvaluations = new Map();
-    const selectedFormatDetails = [];
-    const formatSet = new Set(selectedFormats);
-    formatOptions.forEach((format) => {
-      const evaluation = evaluateFormat(format, { creativeMultiplier });
-      formatEvaluations.set(format.id, evaluation);
-      if (formatSet.has(format.id)) {
-        formatsCost += evaluation.cost;
-        teamLoad += evaluation.load;
-        timelineDays += evaluation.timeline;
-        selectedFormatDetails.push({
-          id: format.id,
-          name: format.label,
-          cost: Math.round(evaluation.cost),
-        });
-      }
-    });
-
-    const formatSurcharge = selectedFormats.length >= 2 ? selectedFormats.length * 2000 : 0;
-    formatsCost += formatSurcharge;
-
-    const priceMultiplier = speed?.priceMultiplier ?? 1;
-    const timeMultiplier = speed?.timeMultiplier ?? 1;
-
-    const baseCostWithSpeed = Math.round(baseCost * priceMultiplier);
-    const servicesCostWithSpeed = Math.round(servicesCost * priceMultiplier);
-    const formatsCostWithSpeed = Math.round(formatsCost * priceMultiplier);
-
-    const subtotal = baseCost + servicesCost + formatsCost;
-    const totalCost = baseCostWithSpeed + servicesCostWithSpeed + formatsCostWithSpeed;
-    const timelineResult = Math.max(5, Math.round(timelineDays * timeMultiplier));
-    const teamLoadPercent = Math.min(100, Math.round(teamLoad));
-
-    const roiReference = roiBaseline + roiBoost * 14000 * creativeMultiplier + (savings.money ?? 0) * 0.25;
-    const roi = totalCost > 0 ? Math.round(((roiReference - totalCost) / totalCost) * 100) : 0;
-
-    const savingsTime = Math.min(90, Math.round(savings.time ?? 0));
-    const savingsBudget = Math.min(90, Math.round(savings.budget ?? 0));
-    const savingsRisk = Math.min(90, Math.round(savings.risk ?? 0));
-    const savedHours = Math.max(0, Math.round(savings.hours ?? 0));
-    const savedMoney = Math.max(0, Math.round(savings.money ?? 0));
-
-    const savingsSummary = `≈ ${savingsTime}% времени / ${savingsBudget}% бюджета / ${savingsRisk}% рисков`;
-
-    const funnelProjection = calculateFunnelProjection(funnelModel, {
-      stageConversions: stageConversionBoosts,
-      trafficBoost: funnelTrafficBoost,
-      avgCheckBoost: funnelAvgCheckBoost,
-    });
-
-    const exportPayload = {
-      productType: product.id,
-      productName: product.label,
-      description: product.description,
-      parameters: {
+  const summary = useMemo(
+    () =>
+      calculateSummary({
+        productTypeId,
+        speedId,
         durationSeconds,
-        durationFormatted: formatDuration(durationSeconds),
-        speed: speed.label,
-        creatives: product.supportsCreatives ? creativeMultiplier : undefined,
-        formats: selectedFormatDetails.map((item) => item.name),
-      },
-      services: selectedServiceDetails.map((service) => ({
-        name: service.name,
-        description: service.description,
-        cost: service.cost,
-        voice: service.voice ?? undefined,
-        teamLoad: service.teamLoad,
-        timelineDays: service.timeline,
-        iterations: service.iterations,
-        includedIterations: service.included,
-      })),
-      totals: {
-        cost: totalCost,
-        timelineDays: timelineResult,
-        teamLoadPercent,
-        roiPercent: roi,
-        savings: {
-          summary: savingsSummary,
-          savedHours,
-          savedMoney,
-        },
-        breakdown: {
-          base: baseCostWithSpeed,
-          services: servicesCostWithSpeed,
-          formats: formatsCostWithSpeed,
-        },
-      },
-      note: `Сэкономите ≈ ${savedHours} часов и ${formatCurrency(savedMoney)} в месяц.`,
-    };
-
-    return {
-      product,
-      speed,
-      creativeMultiplier,
-      durationMinutes,
-      subtotal,
-      servicesCost,
-      formatsCost,
-      costBreakdown: {
-        base: baseCostWithSpeed,
-        services: servicesCostWithSpeed,
-        formats: formatsCostWithSpeed,
-        priceMultiplier,
-      },
-      totals: {
-        totalCost,
-        timelineDays: timelineResult,
-        teamLoadPercent,
-        roi,
-        savingsSummary,
-        savedHours,
-        savedMoney,
-      },
-      selectedServiceDetails,
-      selectedFormatDetails,
-      serviceEvaluations,
-      formatEvaluations,
-      exportPayload,
-      funnelProjection,
-    };
-  }, [
-    productTypeId,
-    speedId,
-    durationSeconds,
+        creativeCount,
+        selectedFormats,
+        selectedServices,
+        voiceoverType,
+        revisionIterations,
+      }),
+    [
+      productTypeId,
+      speedId,
+      durationSeconds,
     creativeCount,
     selectedFormats,
     selectedServices,
