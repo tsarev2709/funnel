@@ -200,27 +200,6 @@ export const serviceOptions = [
     },
   },
   {
-    id: 'animation',
-    label: '🎨 Анимация и монтаж',
-    description: 'Полный цикл производства, композитинг и финальная сборка.',
-    price: 65000,
-    pricePerMinute: 23400,
-    teamLoad: 12,
-    teamHours: 60,
-    hoursPerMinute: 18,
-    timeline: 7,
-    clientSavings: { time: 9, budget: 6, risk: 10, hours: 16, money: 110500 },
-    roiBoost: 14,
-    defaultSelected: true,
-    perCreative: true,
-    funnelImpact: {
-      stageConversions: {
-        proposal: 1.1,
-        deals: 1,
-      },
-    },
-  },
-  {
     id: 'voiceover',
     label: '🎙️ Озвучка',
     description: 'Профессиональная запись или нейросеть — выберите формат.',
@@ -233,7 +212,7 @@ export const serviceOptions = [
     voiceOptions: [
       { id: 'female', label: 'Женский голос', price: 13000 },
       { id: 'male', label: 'Мужской голос', price: 13000 },
-      { id: 'neural', label: 'Нейросеть', price: 13000 },
+      { id: 'neural', label: 'Нейросеть', price: 5000 },
     ],
     defaultVoice: 'female',
     funnelImpact: {
@@ -245,7 +224,7 @@ export const serviceOptions = [
   {
     id: 'iterations',
     label: '🔄 Количество итераций правок',
-    description: 'Две итерации включены, каждая дополнительная — +20% от стоимости анимации и монтажа.',
+    description: 'Две итерации включены, каждая дополнительная — +20% от стоимости производства.',
     included: 2,
     percentPerExtra: 0.2,
     defaultSelected: true,
